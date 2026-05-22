@@ -28,3 +28,29 @@ Resume protocol: at session start, read `BUILD_SPEC.md` (or the spec the user pa
 - Public GitHub repo creation. `gh` CLI not installed on this machine. User needs to either install `gh`, manually create `github.com/<user>/job-cannon` and add as remote, or hand off the push step. Local commit will be made; remote setup waits on user.
 
 **Next:** Phase 1 — scrapers + `data/jobs.json`.
+
+## Phase 1 — Scrapers + `data/jobs.json` (completed)
+
+**Date:** 2026-05-22
+
+**Completed:**
+- `lib/types.ts` — shared `Job`, `Profile`, `RankedJobs`, `MatchedJob` types + Zod schemas.
+- `lib/scrapers/html.ts` — entity-decoding HTML→plain-text stripper, capped at 4000 chars.
+- `lib/scrapers/greenhouse.ts` + `greenhouse-companies.ts` (30 slugs).
+- `lib/scrapers/lever.ts` + `lever-companies.ts` (15 slugs).
+- `lib/scrapers/remoteok.ts` (sends UA — endpoint 403s without it).
+- `scripts/scrape.ts` orchestrator: parallel fetch, upsert by `id`, drop entries not seen in 14 days, write pretty JSON.
+- `pnpm scrape` script.
+- First scrape produced **4041 jobs** (Greenhouse 3715, Lever 226, RemoteOK 100). Comfortably above the 500 DoD.
+
+**Decisions:**
+- Tolerated per-board 404s. 13/30 Greenhouse and 12/15 Lever slugs returned 404 — most companies migrated ATSes (real-world list rot). Could revisit slugs later, but DoD is met and the scraper now degrades gracefully when any individual board breaks.
+- jobs.json file is **17.8 MB** committed. Acceptable for MVP; can revisit (truncate descriptions, drop oldest by source) if Vercel function bundle size becomes a problem.
+- Stripped HTML once on ingest (during scrape) instead of at match time — keeps the AI prompt cheap.
+- Sorted output by `source, posted_at desc` for diff stability (nightly cron will produce smaller diffs).
+
+**Deferred:**
+- Per-board health metrics / surfacing the 404s in CI. Not needed yet.
+- Slug repair pass (find current ATS for each migrated company).
+
+**Next:** Phase 2 — `POST /api/match` route.
