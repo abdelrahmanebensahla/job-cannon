@@ -101,3 +101,25 @@ Resume protocol: at session start, read `BUILD_SPEC.md` (or the spec the user pa
 - End-to-end smoke test (drop PDF → see real results) requires `ANTHROPIC_API_KEY`.
 
 **Next:** Phase 4 — deploy + nightly scrape + README. Also still needs the GitHub remote (deferred from Phase 0).
+
+## Phase 4 — README + cron (partial; deploy blocked on user)
+
+**Date:** 2026-05-22
+
+**Completed:**
+- `README.md` rewritten per spec: live-demo placeholder, mermaid arch diagram, "how the matching works" rationale (leads with the explicit "keyword pre-filter vs vector embeddings" design choice for portfolio readers), tech stack, local setup, env table, project layout, MIT license link.
+- `LICENSE` (MIT, attributed to the user).
+- `.github/workflows/scrape.yml` — nightly cron at 07:00 UTC + `workflow_dispatch`. Sets up pnpm + Node 20, runs `pnpm scrape`, commits `data/jobs.json` only if it changed.
+
+**Blocked on user:**
+- **Vercel deployment.** Requires `vercel link` or a token plus a project name choice. Cannot run unattended.
+- **GitHub remote + first push.** `gh` CLI not installed on this machine; user needs to either install it, manually create `github.com/<user>/job-cannon` and add it as origin, or hand off the push.
+- **README hero screenshot.** Needs a live deploy to look real. Placeholder note left in README.
+- **Phase 2 end-to-end verification.** Still pending `ANTHROPIC_API_KEY` in `.env.local`.
+
+**Decisions:**
+- Cron set to 07:00 UTC daily. Adjustable; just a sensible "before US workday" default.
+- Workflow uses `pnpm/action-setup@v3` with `version: 10` (matches local pnpm 10.12.3).
+- Avoided baking the user's name into the README beyond the LICENSE copyright — keeps it portable if the project gets forked.
+
+**Next:** User confirms approach for ANTHROPIC_API_KEY + GitHub remote + Vercel. Then end-to-end verify, deploy, snapshot README screenshot, and Phase 4 closes.
