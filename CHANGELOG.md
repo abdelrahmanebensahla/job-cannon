@@ -123,3 +123,16 @@ Resume protocol: at session start, read `BUILD_SPEC.md` (or the spec the user pa
 - Avoided baking the user's name into the README beyond the LICENSE copyright — keeps it portable if the project gets forked.
 
 **Next:** User confirms approach for ANTHROPIC_API_KEY + GitHub remote + Vercel. Then end-to-end verify, deploy, snapshot README screenshot, and Phase 4 closes.
+
+### User decisions (end of 2026-05-22 session)
+
+- **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
+- **Vercel deploy:** user will deploy via the Vercel dashboard, not the CLI.
+- **Phase 2 end-to-end verification:** explicitly skipped for now. Treat Phase 2 DoD as "code complete + static checks pass." A real verification will happen the first time someone runs the production deploy with a real key.
+
+### Handoff to user for end-of-Phase-4 closure
+
+1. **Push to GitHub.** `git remote add origin git@github.com:<you>/job-cannon.git && git push -u origin main`. Optionally set the repo description "AI resume to job matching, powered by Claude" and tag with `nextjs`, `typescript`, `claude`, `ai`, `job-search`. Once Actions is enabled (default on new repos), `Nightly scrape` will appear under the Actions tab. Run it manually via `workflow_dispatch` to confirm it works before the first cron fire.
+2. **Deploy to Vercel.** Import the GitHub repo in the Vercel dashboard. Set `ANTHROPIC_API_KEY` under Project Settings → Environment Variables. Trigger a deploy. The function defaults work but if `/api/match` ever 504s, check that the project is on the Pro plan or drop the pre-filter to 25 candidates per spec.
+3. **Update README.** Replace `_(coming after first Vercel deploy — see CHANGELOG.md)_` with the live URL. Take a screenshot of the landing page + a results page and add them in place of `_(Screenshot will land here...)_`. Commit.
+4. **Verify e2e.** Drop a real resume PDF on the production URL and confirm the round-trip works.
