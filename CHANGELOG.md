@@ -78,3 +78,26 @@ Resume protocol: at session start, read `BUILD_SPEC.md` (or the spec the user pa
 - End-to-end verification (Phase 2 DoD strictly requires this) needs `ANTHROPIC_API_KEY` in `.env.local`. Code path compiles and is statically clean. User to provide key before next run.
 
 **Next:** Phase 3 — UI (landing + dropzone + processing + results).
+
+## Phase 3 — UI (built, idle render verified)
+
+**Date:** 2026-05-22
+
+**Completed:**
+- `components/MatchScoreRing.tsx` — SVG ring (red <50, amber 50–74, emerald 75+) with score inside.
+- `components/JobCard.tsx` — company, title, location, remote/source badges, score ring, native `<details>` for expandable reasoning, "View job →" external link, relative posted-at.
+- `components/ProfileSummary.tsx` — name, seniority badge, target roles, locations, top 10 skills as badges, summary.
+- `components/MatchClient.tsx` — single client island. Three states: idle (dropzone), processing (Progress bar + 3-step indicator + skeletons), done (ProfileSummary + ranked JobCard list). Error state with friendly copy mapped from API error codes.
+- `app/page.tsx` — server component hero + footer + `<MatchClient />` island. Mobile-first layout (`max-w-3xl`, `px-4` on small, `px-6` on sm+).
+- Dev server boots cleanly; `GET /` returns 200 / 15 KB.
+
+**Decisions:**
+- Used native `<details>/<summary>` for reasoning disclosure — no extra state machine, no Radix Collapsible dependency. CSS handles the open/closed labels with `group-open:`.
+- Processing UI is time-based, not event-based: the API is a single round-trip so the client has no real intermediate progress signal. The 3-step indicator advances on a timer (~8s) and the Progress bar tweens towards 92%. Honest visual cadence without faking precision. Worth swapping to SSE/streaming later if cycles allow.
+- Friendly error copy lives in MatchClient (single source of truth). Underlying API still returns short stable codes for programmatic use.
+- 10 MB cap enforced client-side via react-dropzone AND server-side in the API route.
+
+**Deferred / blocked:**
+- End-to-end smoke test (drop PDF → see real results) requires `ANTHROPIC_API_KEY`.
+
+**Next:** Phase 4 — deploy + nightly scrape + README. Also still needs the GitHub remote (deferred from Phase 0).
