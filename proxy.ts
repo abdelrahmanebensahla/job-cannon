@@ -1,8 +1,15 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Phase 0: just enable Clerk on every relevant request. Route protection
-// (e.g. /dashboard/* requires an active subscription) lands in Phase 2.
-export default clerkMiddleware();
+// Authed routes: any /dashboard/* and /onboarding require a signed-in user.
+// The /dashboard/* subscription check happens in the dashboard layout
+// (kept out of middleware to avoid a Neon DB hit on every nav).
+const isAuthed = createRouteMatcher(['/dashboard(.*)', '/onboarding(.*)']);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isAuthed(req)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [

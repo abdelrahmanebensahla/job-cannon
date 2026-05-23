@@ -197,6 +197,44 @@ Spec: `SAAS_BUILD_SPEC.md` (pasted v1 by user mid-session 2026-05-22). MVP `/api
 
 **Next:** SaaS Phase 2 — Stripe checkout + Customer Portal + webhook. Requires user to create the two products in Stripe dashboard and copy the `price_xxx` IDs.
 
+## SaaS Phase 2 — Stripe checkout + portal + webhook (built, verification pending)
+
+**Date:** 2026-05-22
+
+**Completed:**
+- `lib/stripe/client.ts` — Stripe singleton + `resolvePriceId('monthly' | 'yearly')` server-side resolver + `TRIAL_PERIOD_DAYS = 7`.
+- `lib/stripe/subscription.ts` — `getCurrentSubscription(userId)` and `syncSubscriptionFromStripe(sub, fallbackUserId?)`. The sync helper handles upserts from both `checkout.session.completed` (with fallbackUserId) and the `customer.subscription.*` events (which carry `metadata.userId`).
+- `lib/app-url.ts` — auto-resolves absolute base URL: `NEXT_PUBLIC_APP_URL` > `VERCEL_PROJECT_PRODUCTION_URL` > `VERCEL_URL` > localhost. Means Vercel deploys "just work" without manual host config.
+- `app/api/checkout/route.ts` — Clerk-authed POST `{ priceId }`. `ensureUser` mirror, then Stripe Checkout session with `client_reference_id: userId`, `customer_email`, `subscription_data.trial_period_days: 7`, **`subscription_data.metadata.userId`** (so future webhook events can route to the user even without the original session). Returns `{ ok, url }`.
+- `app/api/portal/route.ts` — Clerk-authed POST. Looks up `stripeCustomerId` from the user's most recent subscription; creates billing-portal session with `return_url: /dashboard`.
+- `app/api/webhooks/stripe/route.ts` — verifies `stripe-signature` against `STRIPE_WEBHOOK_SECRET`. Routes events:
+  - `checkout.session.completed` (subscription mode only): retrieves the full subscription with `expand=['items.data.price']`, calls sync with `userId` from `client_reference_id` / `session.metadata.userId`.
+  - `customer.subscription.updated` and `customer.subscription.deleted`: sync directly from `event.data.object`. If metadata is missing (stray test event), ack + log + ignore.
+  - Other event types: ack with `ignored:<type>` so Stripe doesn't retry.
+- `components/PricingClient.tsx` — client island. `useAuth()` from Clerk; signed-out clicks redirect to `/sign-up?redirect_url=/pricing`; signed-in clicks POST and `window.location.href = data.url`. Maps server error codes to user-friendly copy.
+- `app/pricing/page.tsx` — two cards, "save $29" badge on the annual plan, feature list, links to `/terms` + `/privacy`, banner for `?canceled=1`.
+- `app/privacy/page.tsx` + `app/terms/page.tsx` — minimal real text (not lorem-ipsum) so Stripe and the user have working links. Phase 5 can expand if needed.
+- `app/dashboard/page.tsx` — Phase 2 stub. Redirects unauthed/no-sub/no-resume users; renders a welcome banner on `?welcome=1`. Phase 3 fully replaces with the real digest UI.
+- `proxy.ts` — uses `createRouteMatcher(['/dashboard(.*)', '/onboarding(.*)'])` + `auth.protect()`. Subscription gate handled in the dashboard layout (kept out of middleware to avoid a Neon roundtrip on every nav).
+- `.env.local.example` extended with optional `NEXT_PUBLIC_APP_URL`. README extended with Stripe CLI usage, expanded env var table.
+
+**Spec correction acknowledged:** Stripe no longer accepts `trial_period_days` on the Price object. Set it on the Checkout Session via `subscription_data.trial_period_days: 7` instead. Both `/api/checkout` and the resulting Stripe Subscription pick it up correctly; the webhook flow stores `status: 'trialing'` until the trial elapses, then Stripe fires `customer.subscription.updated` with `status: 'active'`.
+
+**Decisions:**
+- **`current_period_end` lives on `SubscriptionItem`, not `Subscription`** in Stripe API ≥ 2025-04-30. `syncSubscriptionFromStripe` reads `sub.items.data[0].current_period_end` and gracefully falls back to `cancel_at` or epoch if the items array is somehow empty.
+- **`metadata.userId` on the Subscription** (not just the Session) so every future `customer.subscription.*` event self-routes. Avoids needing to join Stripe customer ids back to Clerk user ids.
+- **Sub check in dashboard layout, not middleware.** Spec wording suggested middleware; we chose the layout because Drizzle in edge runtime adds cold-start cost and route protection works identically either way. Auth gate stays in middleware.
+- **`stripe.subscriptions.retrieve(..., { expand: ['items.data.price'] })`** on the session-completed path. Without expand, `items.data[0].price` would be a string id and we'd lose pricing data we might want later.
+- **Idempotency** is upsert-based: every webhook handler ends up calling `syncSubscriptionFromStripe`, which `onConflictDoUpdate` on `subscriptions.id`. Out-of-order delivery is tolerated as long as the latest event represents the latest state — fine for Stripe's at-least-once guarantee.
+- **No `apiVersion` pin on the Stripe SDK.** Letting the SDK use the version it's typed against avoids drift between runtime + types. If Stripe ships a new major API, we'll pin explicitly then.
+
+**Blocked on user (Phase 2 DoD):**
+1. **Set `STRIPE_WEBHOOK_SECRET` for local dev.** Run `stripe login` then `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. Copy the printed `whsec_...` into `.env.local`. README has the full flow.
+2. **Production webhook endpoint:** in the Stripe dashboard create a webhook endpoint pointing at `https://job-cannon.vercel.app/api/webhooks/stripe`, subscribed to `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. Copy the signing secret into Vercel env vars as `STRIPE_WEBHOOK_SECRET`. (Spec correction note: this secret is different from the local Stripe-CLI one — keep both in their respective environments.)
+3. **End-to-end test:** `pnpm dev`, drop a resume on `/onboarding`, hit "Continue to billing," start the monthly trial with test card `4242 4242 4242 4242`. Expected outcome: redirected to `/dashboard?welcome=1`, a `subscriptions` row exists with `status='trialing'`, the Clerk-CLI terminal logs the `checkout.session.completed` event being forwarded.
+
+**Next:** SaaS Phase 3 — real dashboard (today's digest, history, resume manager, billing portal link). Phase 4 is the daily cron + Resend email digest.
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).

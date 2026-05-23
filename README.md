@@ -60,11 +60,44 @@ To refresh the job set:
 pnpm scrape
 ```
 
+To apply schema changes to your Neon database (dev only — Phase 6 switches to migrations):
+
+```bash
+pnpm db:push
+```
+
+### Stripe webhooks during local development
+
+Use the Stripe CLI to forward live test events to your local server:
+
+```bash
+stripe login                                              # one-time
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+# copy the printed "whsec_..." into STRIPE_WEBHOOK_SECRET in .env.local
+# in another terminal:
+pnpm dev
+# then go through /pricing → Stripe Checkout. Use 4242 4242 4242 4242 for
+# the test card; any future date, any CVC.
+```
+
 ## Environment variables
 
-| Name                | Required | Used in           | Purpose                                |
-| ------------------- | -------- | ----------------- | -------------------------------------- |
-| `ANTHROPIC_API_KEY` | yes      | `app/api/match`   | PDF extraction + ranking Claude calls. |
+The MVP free preview only needs `ANTHROPIC_API_KEY`. The SaaS surface adds DB, auth, payments, email, and cron.
+
+| Name                                  | Required        | Used in                                | Purpose                                       |
+| ------------------------------------- | --------------- | -------------------------------------- | --------------------------------------------- |
+| `ANTHROPIC_API_KEY`                   | yes             | `/api/match`, `/api/resume`, cron      | Claude extraction + ranking.                  |
+| `DATABASE_URL`                        | SaaS            | Drizzle / Neon HTTP client             | Postgres connection (Neon).                   |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`   | SaaS            | client                                 | Clerk frontend.                               |
+| `CLERK_SECRET_KEY`                    | SaaS            | server                                 | Clerk backend.                                |
+| `CLERK_WEBHOOK_SECRET`                | SaaS            | `/api/webhooks/clerk`                  | Svix signature verification.                  |
+| `STRIPE_SECRET_KEY`                   | SaaS            | server                                 | Stripe REST calls.                            |
+| `STRIPE_WEBHOOK_SECRET`               | SaaS            | `/api/webhooks/stripe`                 | Stripe webhook signature verification.        |
+| `NEXT_PUBLIC_STRIPE_PRICE_MONTHLY`    | SaaS            | `/api/checkout` (resolved server-side) | Stripe Price id for the $9/month plan.        |
+| `NEXT_PUBLIC_STRIPE_PRICE_YEARLY`     | SaaS            | `/api/checkout` (resolved server-side) | Stripe Price id for the $79/year plan.        |
+| `RESEND_API_KEY`                      | SaaS (Phase 4)  | cron handler                           | Daily email digest delivery.                  |
+| `CRON_SECRET`                         | SaaS (Phase 4)  | `/api/cron/daily-digest`               | Bearer auth for the Vercel-scheduled cron.    |
+| `NEXT_PUBLIC_APP_URL` (optional)      | SaaS            | Stripe redirects, email links          | Override the auto-detected deploy URL.        |
 
 The nightly GitHub Actions scrape needs **no secrets** — it only hits public JSON endpoints.
 
