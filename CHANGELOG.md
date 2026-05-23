@@ -172,6 +172,31 @@ Spec: `SAAS_BUILD_SPEC.md` (pasted v1 by user mid-session 2026-05-22). MVP `/api
 
 **Next:** SaaS Phase 1 — authed resume upload + persisted profile (`/onboarding`, `/api/resume`, `<UserButton />`). Can scaffold without DB up; final verification waits on Phase 0 provisioning.
 
+## SaaS Phase 1 — Authed resume upload (built, verification deferred)
+
+**Date:** 2026-05-22
+
+**Completed:**
+- `components/Header.tsx` — sticky top nav (logo · Pricing · auth-state CTAs · `<UserButton />`). Uses Clerk v7's `<Show when="signed-in|signed-out">` server component pattern (replaces the old `<SignedIn>`/`<SignedOut>` boundary components — those moved out of `@clerk/nextjs` in v7).
+- Mounted `<Header />` in `app/layout.tsx` so every route gets the nav.
+- `lib/auth/ensure-user.ts` — read-then-insert helper that mirrors the Clerk user into our `users` table on first authed write. Belt-and-suspenders against the Clerk-webhook-vs-first-request race (e.g. social SSO with instant redirect).
+- `app/api/resume/route.ts` — POST, Clerk-authed. Same PDF guardrails as `/api/match` (size, content-type, magic bytes). Calls `extractProfile`, then deactivates prior active resumes for the user, then inserts the new active resume. Returns `{ ok, resumeId, profile }` or a stable error code.
+- `app/onboarding/page.tsx` — server component. Redirects unauthed users to `/sign-in?redirect_url=/onboarding`. Redirects users with an existing active resume to `/dashboard`. Otherwise renders `<OnboardingClient />`.
+- `components/OnboardingClient.tsx` — dropzone (same UX as the public MatchClient), indeterminate Progress while processing, on success shows the extracted profile via `<ProfileSummary>` plus a "Continue to billing" link to `/pricing` (built in Phase 2).
+- `pnpm build` clean; all 8 routes register and proxy attaches.
+
+**Decisions / discoveries:**
+- **Clerk v7 breaking change:** the boundary components `<SignedIn>`/`<SignedOut>` and `<SignIn.Loading>` etc. were removed from `@clerk/nextjs`. The replacement is `<Show when="signed-in">` (server component, awaitable). Migrated Header to it.
+- **shadcn (base-ui flavor) doesn't ship `asChild`:** the new shadcn scaffolding uses `@base-ui/react/button` rather than Radix Slot, so `<Button asChild>` doesn't typecheck. Used `buttonVariants(...)` directly on `<Link>` elements where button styling on a link was needed.
+- **Neon HTTP doesn't support multi-statement transactions.** The deactivate-old-then-insert-new resume flow runs as two sequential statements with a brief window where two rows could be active. All readers filter on `isActive=true` and we tolerate the race — single-user flow, very small window.
+- **Did not refactor `lib/ai/extract.ts`** — already cleanly importable; spec only asked for the refactor "if you haven't already."
+- **Landing page (`/`) now renders dynamic** because the Header uses `<Show>`, which reads auth state. Acceptable cost for the cleaner UX of a unified nav.
+
+**Blocked on user (still):**
+- Without Neon + Clerk provisioned, hitting `/onboarding` or `/api/resume` will throw at request time. Static checks pass.
+
+**Next:** SaaS Phase 2 — Stripe checkout + Customer Portal + webhook. Requires user to create the two products in Stripe dashboard and copy the `price_xxx` IDs.
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
