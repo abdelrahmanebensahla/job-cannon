@@ -1,6 +1,6 @@
 # Job Cannon
 
-**Live demo:** _(coming after first Vercel deploy — see `CHANGELOG.md`)_
+**Live demo:** [job-cannon.vercel.app](https://job-cannon.vercel.app/)
 
 AI-powered resume-to-job matching. Drop a PDF resume on the landing page; Claude extracts a structured profile, scans thousands of fresh postings from Greenhouse, Lever, and RemoteOK, and returns the 20 best fits with reasoning for each.
 

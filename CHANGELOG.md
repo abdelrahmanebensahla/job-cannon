@@ -124,6 +124,17 @@ Resume protocol: at session start, read `BUILD_SPEC.md` (or the spec the user pa
 
 **Next:** User confirms approach for ANTHROPIC_API_KEY + GitHub remote + Vercel. Then end-to-end verify, deploy, snapshot README screenshot, and Phase 4 closes.
 
+### Phase 4 closure (2026-05-22, later)
+
+- **GitHub remote live:** `github.com/abdelrahmanebensahla/job-cannon`. Auto-init `LICENSE` commit on the remote was overwritten by a `--force-with-lease` push of local main.
+- **Nightly scrape verified:** workflow already ran once after the push (commit `447b3e2 chore: refresh jobs.json`). Refreshed counts: greenhouse 3716, lever 226, remoteok 112 — 4054 total. Pulled back into local with a fast-forward.
+- **Vercel deploy live:** [job-cannon.vercel.app](https://job-cannon.vercel.app/). `GET /` returns 200 with the expected title + dropzone copy.
+- **README updated** with the live demo link.
+
+**Still open (lightweight):**
+- Hero screenshot in the README (need a real screenshot from the live UI).
+- Phase 2 end-to-end smoke (real resume → ranked results) — user opted to defer earlier; can do anytime now that the deploy is live.
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
