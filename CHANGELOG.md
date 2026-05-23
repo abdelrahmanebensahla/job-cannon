@@ -135,6 +135,43 @@ Resume protocol: at session start, read `BUILD_SPEC.md` (or the spec the user pa
 - Hero screenshot in the README (need a real screenshot from the live UI).
 - Phase 2 end-to-end smoke (real resume → ranked results) — user opted to defer earlier; can do anytime now that the deploy is live.
 
+---
+
+# SaaS expansion — starts here
+
+Spec: `SAAS_BUILD_SPEC.md` (pasted v1 by user mid-session 2026-05-22). MVP `/api/match` stays as the free preview.
+
+## SaaS Phase 0 — Wire up DB + auth (built, awaiting user provisioning)
+
+**Date:** 2026-05-22
+
+**Completed:**
+- Installed `@clerk/nextjs@7.4.1`, `drizzle-orm@0.45.2`, `@neondatabase/serverless@1.1.0`, `svix@1.94.0`, and dev deps `drizzle-kit`, `dotenv`.
+- `db/schema.ts` — `users`, `subscriptions`, `resumes`, `dailyDigests` per spec. Unique index on `(userId, digestDate)` for digest idempotency. `Profile` and `MatchedJob` types reused from MVP via `$type<...>()` on jsonb columns. Inferred `$inferSelect`/`$inferInsert` types exported, plus `hasActiveSubscription` helper.
+- `db/index.ts` — Neon HTTP client wrapped in a lazy proxy so module imports don't blow up `next build` when `DATABASE_URL` is absent (only fails on first actual access). Global cache for HMR.
+- `drizzle.config.ts` — loads `.env.local` then `.env` (Next's order), emits to `db/migrations/`.
+- `package.json` scripts: `db:push`, `db:generate`, `db:migrate`, `db:studio`.
+- `proxy.ts` (Next 16 renamed `middleware.ts` → `proxy.ts` — see deprecation warning) with `clerkMiddleware()`. No route guards yet; SaaS Phase 2 wires those.
+- `app/layout.tsx` wrapped in `<ClerkProvider>`.
+- `app/sign-in/[[...sign-in]]/page.tsx` + `app/sign-up/[[...sign-up]]/page.tsx` (Clerk catch-all routes).
+- `app/api/webhooks/clerk/route.ts` — Svix signature verification + handlers for `user.created` (insert, `onConflictDoNothing`) and `user.deleted` (delete by id). Idempotent. Returns 401 on bad signature, 500 on missing config, 200 on success or ignored event.
+- `.env.local.example` extended with all new env vars (DB, Clerk, Stripe placeholders for Phase 2, Resend for Phase 4, CRON_SECRET).
+- `pnpm build` still clean. Routes: /, /api/match, /api/webhooks/clerk, /sign-in/[[...sign-in]], /sign-up/[[...sign-up]]; Proxy (Middleware) attached.
+
+**Decisions:**
+- **Next 16 file convention change discovered:** `middleware.ts` → `proxy.ts`. The Clerk SDK works unchanged (it returns a NextMiddleware function which Next 16's proxy accepts as a default export). Renamed accordingly to silence the deprecation warning and stay aligned with Next 16 conventions.
+- **Lazy Drizzle client:** wrapping the db export in a Proxy means `next build` (which transitively imports the schema during route collection) doesn't crash on missing `DATABASE_URL`. Only request-time code paths trigger client creation.
+- **Schema location:** spec said `db/`, not `lib/db/`. Followed spec.
+- **jsonb `$type` annotations** on `resumes.profile` and `dailyDigests.jobs` give us full TS narrowing without a runtime cost.
+- **Did not factor out `extract-profile.ts`** as a shared helper yet — the spec said "if you haven't already." We have `lib/ai/extract.ts` already exporting `extractProfile`; SaaS Phase 1's `/api/resume` can import it directly. No rename needed.
+
+**Blocked on user (DoD requires all three):**
+1. **Neon project + `DATABASE_URL`** in `.env.local`. Once set, `pnpm db:push` creates the four tables.
+2. **Clerk app + keys** (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) in `.env.local`. Once set, `/sign-up` renders the Clerk component.
+3. **Clerk webhook endpoint** pointing at the deployed `/api/webhooks/clerk`, subscribed to `user.created` and `user.deleted`. Copy the signing secret into `CLERK_WEBHOOK_SECRET`.
+
+**Next:** SaaS Phase 1 — authed resume upload + persisted profile (`/onboarding`, `/api/resume`, `<UserButton />`). Can scaffold without DB up; final verification waits on Phase 0 provisioning.
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
