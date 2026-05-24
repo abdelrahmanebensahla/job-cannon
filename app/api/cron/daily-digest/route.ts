@@ -20,8 +20,23 @@ const CONCURRENCY = 5;
 
 type Eligible = { userId: string; email: string; profile: Profile };
 
+type CronUserResult = {
+  userId: string;
+  email: string;
+  status: 'sent' | 'skipped' | 'inserted_no_email' | 'error';
+  error?: string;
+};
+
 type CronResponse =
-  | { ok: true; processed: number; sent: number; errors: number; skipped: number; digestDate: string }
+  | {
+      ok: true;
+      processed: number;
+      sent: number;
+      errors: number;
+      skipped: number;
+      digestDate: string;
+      details: CronUserResult[];
+    }
   | { ok: false; error: string };
 
 function fail(error: string, status = 400): NextResponse<CronResponse> {
@@ -142,16 +157,27 @@ async function run(): Promise<NextResponse<CronResponse>> {
 
   const allJobs = await loadJobs();
 
-  const results = await runWithConcurrency(subscribers, CONCURRENCY, user =>
-    processUser(user, allJobs, digestDate).catch(e => ({
-      status: 'error' as const,
-      error: e instanceof Error ? e.message : 'unknown',
-    })),
-  );
+  const rawResults = await runWithConcurrency(subscribers, CONCURRENCY, async user => {
+    try {
+      const r = await processUser(user, allJobs, digestDate);
+      return { user, ...r };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown';
+      console.error(`processUser threw for ${user.email}:`, e);
+      return { user, status: 'error' as const, error: msg };
+    }
+  });
 
-  const sent = results.filter(r => r.status === 'sent').length;
-  const skipped = results.filter(r => r.status === 'skipped').length;
-  const errors = results.filter(r => r.status === 'error' || r.status === 'inserted_no_email').length;
+  const details: CronUserResult[] = rawResults.map(r => ({
+    userId: r.user.userId,
+    email: r.user.email,
+    status: r.status,
+    error: r.error,
+  }));
+
+  const sent = details.filter(r => r.status === 'sent').length;
+  const skipped = details.filter(r => r.status === 'skipped').length;
+  const errors = details.filter(r => r.status === 'error' || r.status === 'inserted_no_email').length;
   const ms = Date.now() - startedAt;
   console.log(`[cron] processed=${subscribers.length} sent=${sent} skipped=${skipped} errors=${errors} in ${ms}ms`);
 
@@ -162,6 +188,7 @@ async function run(): Promise<NextResponse<CronResponse>> {
     errors,
     skipped,
     digestDate,
+    details,
   });
 }
 

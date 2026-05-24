@@ -15,7 +15,9 @@ export async function sendDigestEmail({ to, digestDate, jobs }: SendDigestArgs) 
   const firstName = firstNameFromEmail(to);
   const dateLabel = formatLongDate(digestDate);
   const subject = `Your ${jobs.length} startup jobs — ${dateLabel}`;
-  return getResend().emails.send({
+  // Resend v6 returns { data, error } — it does NOT throw on API errors.
+  // Promote `error` to a thrown exception so callers' try/catch works.
+  const { data, error } = await getResend().emails.send({
     from: getFromAddress(),
     to: [to],
     subject,
@@ -27,4 +29,11 @@ export async function sendDigestEmail({ to, digestDate, jobs }: SendDigestArgs) 
       billingUrl: appUrl('/dashboard/billing'),
     }),
   });
+  if (error) {
+    const detail = typeof error === 'object' && error !== null
+      ? JSON.stringify(error)
+      : String(error);
+    throw new Error(`resend_send_failed: ${detail}`);
+  }
+  return data;
 }
