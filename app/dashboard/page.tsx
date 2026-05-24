@@ -1,69 +1,80 @@
-import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { JobCard } from '@/components/JobCard';
+import { NextDigestCountdown } from '@/components/NextDigestCountdown';
 import { db } from '@/db';
-import { resumes, hasActiveSubscription } from '@/db/schema';
-import { getCurrentSubscription } from '@/lib/stripe/subscription';
+import { dailyDigests } from '@/db/schema';
+import { formatLongDate, todayInET } from '@/lib/date';
+import type { MatchedJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Promise<{ welcome?: string }>;
 
-export default async function DashboardPage(props: { searchParams: SearchParams }) {
+export default async function DashboardTodayPage(props: { searchParams: SearchParams }) {
+  // Layout already enforced auth + resume + active sub.
   const { userId } = await auth();
-  if (!userId) redirect('/sign-in?redirect_url=/dashboard');
+  const today = todayInET();
 
-  // Resume gate FIRST. Per spec the flow is: signup → onboarding → pricing
-  // → trial → dashboard. Checking sub first would loop pre-trial users back
-  // to /pricing without ever giving them a chance to upload.
-  const activeResume = await db
-    .select({ id: resumes.id, filename: resumes.filename })
-    .from(resumes)
-    .where(and(eq(resumes.userId, userId), eq(resumes.isActive, true)))
+  const rows = await db
+    .select({ jobs: dailyDigests.jobs, sentAt: dailyDigests.sentAt })
+    .from(dailyDigests)
+    .where(and(eq(dailyDigests.userId, userId!), eq(dailyDigests.digestDate, today)))
     .limit(1);
-  if (!activeResume[0]) redirect('/onboarding');
 
-  const sub = await getCurrentSubscription(userId);
-  if (!hasActiveSubscription(sub)) redirect('/pricing');
-
+  const digest = rows[0];
   const { welcome } = await props.searchParams;
-  const status = sub!.status;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
+    <div className="space-y-6">
       {welcome && (
-        <Card className="mb-6 border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+        <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30">
           <CardContent className="p-4 text-sm">
             🎉 You&apos;re in. Your trial is active — your first digest lands tomorrow at 8am ET.
           </CardContent>
         </Card>
       )}
 
-      <header className="mb-8">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Dashboard</h1>
-          <Badge variant="secondary" className="capitalize">
-            {status}
-          </Badge>
-        </div>
-        <p className="mt-2 text-base text-muted-foreground">
-          Resume on file: <span className="text-foreground/90">{activeResume[0].filename}</span>
-        </p>
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          {formatLongDate(today)}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">Today&apos;s top matches.</p>
       </header>
 
-      <Card>
-        <CardContent className="space-y-3 p-6">
-          <h2 className="text-lg font-semibold tracking-tight">Today&apos;s digest is pending</h2>
-          <p className="text-sm text-muted-foreground">
-            The full dashboard (today&apos;s 10 matches, 30-day history, resume manager, billing portal
-            link) ships in the next phase. For now this stub confirms your subscription is active
-            and Stripe is wired up end-to-end.
+      {digest ? (
+        <section>
+          <p className="mb-3 text-xs text-muted-foreground">
+            {digest.jobs.length} matches{digest.sentAt ? ' · emailed' : ' · email pending'}
           </p>
-        </CardContent>
-      </Card>
-    </main>
+          <ul className="space-y-3">
+            {(digest.jobs as MatchedJob[]).map(j => (
+              <li key={j.id}>
+                <JobCard job={j} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <Card>
+          <CardContent className="space-y-3 p-6">
+            <h2 className="text-lg font-semibold tracking-tight">No digest yet</h2>
+            <p className="text-sm text-muted-foreground">
+              The daily cron runs at 8am ET, Monday through Friday. Next run in{' '}
+              <span className="font-medium text-foreground">
+                <NextDigestCountdown />
+              </span>
+              . While you wait, you can browse a free instant preview on the{' '}
+              <a href="/" className="underline underline-offset-2 hover:text-foreground">
+                landing page
+              </a>
+              .
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

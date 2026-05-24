@@ -235,6 +235,55 @@ Spec: `SAAS_BUILD_SPEC.md` (pasted v1 by user mid-session 2026-05-22). MVP `/api
 
 **Next:** SaaS Phase 3 — real dashboard (today's digest, history, resume manager, billing portal link). Phase 4 is the daily cron + Resend email digest.
 
+### Phase 2 verification (closed 2026-05-24)
+
+End-to-end test on prod with a fresh Clerk account `abdelrahmane4216+test1@gmail.com`:
+
+- `users` row landed via Clerk webhook on signup.
+- `resumes` row inserted by `/api/resume` (`abdelrahmane_bensahla_resume_2.0.pdf`, `is_active=true`).
+- `subscriptions` row inserted by Stripe webhook: `sub_1Taf0x2OPNNpBbdKmB44d5xZ`, status `trialing`, price = monthly, period ends 2026-05-31 (= signup + 7d = trial-period working).
+
+Two bugs caught + fixed during this verification round:
+
+1. `auth.protect()` in Clerk v7 falls through to a 404 when `signInUrl` isn't configured via env vars. Replaced with explicit `NextResponse.redirect(/sign-in?redirect_url=…)` in `proxy.ts` (commit `ae9fc5a`).
+2. The post-signup funnel had no path to `/onboarding`: my `/dashboard` checked sub *before* resume, so freshly-signed-up users bounced dashboard → /pricing in a loop. Two fixes (commit `f72ccae`):
+   - `<SignUp forceRedirectUrl="/onboarding">` — new users always land on the resume upload step.
+   - Dashboard layout/page checks resume *before* sub.
+
+Also discovered (and acted on): Stripe holds failed webhook deliveries for 30 days; the user's orphan subscription self-healed via Stripe's retry once `STRIPE_WEBHOOK_SECRET` was correctly set on Vercel. No manual replay needed.
+
+## SaaS Phase 3 — Subscriber dashboard (built)
+
+**Date:** 2026-05-24
+
+**Completed:**
+- `app/dashboard/layout.tsx` — single source of truth for the three gates (auth → resume → active sub). Renders the sidebar + bottom-nav chrome. Replaces the per-page gate code from Phase 2.
+- `app/dashboard/page.tsx` — today's digest in two states: digest present (renders 10 `<JobCard>`s with "X matches · emailed/pending") or empty state with a live countdown to the next 8am ET cron run.
+- `app/dashboard/history/page.tsx` — past 30 days. Each entry is a `<details>` disclosure: date + top-3 company preview collapsed; full 10 `<JobCard>`s expanded. Empty state on first-day users.
+- `app/dashboard/resume/page.tsx` — filename + upload date + full `<ProfileSummary>` for the active resume. "Replace resume" expands a dropzone that hits `/api/resume`; the existing resume row is auto-deactivated by the API and the new one becomes active.
+- `app/dashboard/billing/page.tsx` — current plan ($9/mo or $79/yr, resolved by matching `priceId` against env vars), status badge, "Cancels at period end" badge if relevant, renewal date, and a `<PortalButton />` that opens Stripe's hosted portal.
+- `components/DashboardNav.tsx` — `<DashboardSidebar>` (desktop, `sm:block`) and `<DashboardBottomBar>` (mobile, `sm:hidden`, fixed bottom). Active-route highlight via `usePathname`.
+- `components/NextDigestCountdown.tsx` — client island, ticks every minute, computes next 13:00 UTC weekday in plain JS (no tz lib — accepts a ~1h drift across DST).
+- `components/PdfDropzone.tsx` — extracted from `OnboardingClient` so the dashboard's "Replace resume" flow can reuse it.
+- `components/ReplaceResumeClient.tsx` — inline dropzone + `router.refresh()` on success; no redirect.
+- `components/PortalButton.tsx` — POSTs `/api/portal`, follows the returned Stripe URL.
+- `components/resume-shared.ts` — extracted `RESUME_ERROR_COPY` + `ResumeApiResponse` type so both the onboarding and replace flows render the same error strings.
+- `lib/date.ts` — `todayInET()` (YYYY-MM-DD in America/New_York) + `formatShortDate` / `formatLongDate` (also in ET). All dashboard date math runs through these so the user always sees the cron's tz.
+
+**Decisions:**
+- **Gates live in the layout, not per-page.** Layout runs the three DB checks once; child pages just `auth()` for the userId. Less duplication, fewer queries on /dashboard/* navigations.
+- **`<details>` for history disclosure**, native HTML, no client state machine for the toggle.
+- **Mobile = fixed bottom tab bar.** Spec offered shadcn `Sheet` as an alternative; the bar is more app-like for an MVP dashboard with only 4 destinations and is a fraction of the JS.
+- **`router.refresh()` over an optimistic update** on resume replace. The server component re-runs with the new active row; correctness > perceived speed for a once-in-a-while action.
+- **Plan label resolved by matching the stored `price_id` against the two `NEXT_PUBLIC_STRIPE_PRICE_*` env vars.** Falls back to "Custom plan" if neither matches, so legacy users on a deprecated price still get a sensible label.
+- **Did NOT build re-engagement emails for users who sign up but don't subscribe** — spec said defer.
+
+**Blocked on user (none for Phase 3 DoD per se — needs Phase 4 cron rows to populate):**
+- Real verification of the "has digest" branch requires Phase 4's cron to have written a `daily_digests` row. Until then, every visit to `/dashboard` will render the empty state with the countdown.
+- /dashboard/resume + /dashboard/billing can be exercised today (you have an active resume + trialing sub already).
+
+**Next:** SaaS Phase 4 — `/api/cron/daily-digest` + React Email + Resend wiring + `vercel.json` cron config.
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
