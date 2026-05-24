@@ -16,17 +16,18 @@ export default async function DashboardPage(props: { searchParams: SearchParams 
   const { userId } = await auth();
   if (!userId) redirect('/sign-in?redirect_url=/dashboard');
 
-  const sub = await getCurrentSubscription(userId);
-  if (!hasActiveSubscription(sub)) redirect('/pricing');
-
-  // No active resume? Send them to onboarding.
+  // Resume gate FIRST. Per spec the flow is: signup → onboarding → pricing
+  // → trial → dashboard. Checking sub first would loop pre-trial users back
+  // to /pricing without ever giving them a chance to upload.
   const activeResume = await db
     .select({ id: resumes.id, filename: resumes.filename })
     .from(resumes)
     .where(and(eq(resumes.userId, userId), eq(resumes.isActive, true)))
     .limit(1);
-
   if (!activeResume[0]) redirect('/onboarding');
+
+  const sub = await getCurrentSubscription(userId);
+  if (!hasActiveSubscription(sub)) redirect('/pricing');
 
   const { welcome } = await props.searchParams;
   const status = sub!.status;
