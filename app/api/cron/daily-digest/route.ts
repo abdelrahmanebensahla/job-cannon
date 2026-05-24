@@ -152,6 +152,7 @@ async function run(): Promise<NextResponse<CronResponse>> {
       errors: 0,
       skipped: 0,
       digestDate,
+      details: [],
     });
   }
 
