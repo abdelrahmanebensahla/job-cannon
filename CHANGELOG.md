@@ -284,6 +284,62 @@ Also discovered (and acted on): Stripe holds failed webhook deliveries for 30 da
 
 **Next:** SaaS Phase 4 — `/api/cron/daily-digest` + React Email + Resend wiring + `vercel.json` cron config.
 
+## SaaS Phase 4 — Daily cron + email digest (built, awaiting Resend + CRON_SECRET)
+
+**Date:** 2026-05-24
+
+**Completed:**
+- Installed `resend@6.12.3` and `@react-email/components@1.0.12`.
+- `emails/daily-digest.tsx` — React Email template. Light-mode-only per spec. Renders:
+  - Greeting: "Good morning, {firstName}" with date label
+  - Top 3 detailed cards (company, title, location, full reasoning, score chip color-coded red/amber/emerald)
+  - Next 7 compact rows (title-as-link, company, location, score)
+  - "View all on the dashboard" button
+  - Footer with "Manage subscription or unsubscribe" → /dashboard/billing (per spec, unsubscribe = cancel)
+- `lib/email/client.ts` — singleton Resend client + `getFromAddress()` (defaults to `Job Cannon <onboarding@resend.dev>`; override via `DIGEST_FROM_EMAIL` once a custom domain is verified).
+- `lib/email/greeting.ts` — `firstNameFromEmail()`: strips trailing digits, splits on `._+-`, title-cases first token. No DB column needed; no Clerk roundtrip in the per-user loop.
+- `lib/email/send-digest.ts` — render template + send via Resend with subject `"Your N startup jobs — Month Day"`.
+- `app/api/cron/daily-digest/route.ts`:
+  - `Authorization: Bearer ${CRON_SECRET}` check on both GET (Vercel Cron default) and POST (manual triggers).
+  - `runtime='nodejs'`, `maxDuration=300` (Vercel Pro; on Hobby the function caps at 60s — flagged in code comments).
+  - Joins users + subscriptions + resumes; collapses to one row per userId (handles users with multiple active subs).
+  - Loads `data/jobs.json` once.
+  - Concurrency-5 processing via a `runWithConcurrency` helper. Per user:
+    1. Idempotency check on `(userId, digestDate)`
+    2. `preFilter` → truncate to **30** candidates (smaller than MVP's 50 per spec — costs scale linearly with users)
+    3. `rankJobs` → slice top 10
+    4. Insert digest row with `onConflictDoNothing` on the unique index (catches concurrent inserts cleanly)
+    5. Send email; on success, `update sent_at`. On email failure, leave `sent_at` null and continue.
+  - Returns `{ ok, processed, sent, errors, skipped, digestDate }`.
+- `vercel.json` — `crons: [{ path: '/api/cron/daily-digest', schedule: '0 13 * * 1-5' }]`. 13:00 UTC = 8am ET in DST, 9am EST in winter, per spec.
+
+**Decisions:**
+- **Persist-then-send.** Digest row commits before the email goes out. If email fails, the digest is still in the DB and shows up in the user's dashboard (sentAt null). Avoids the inverse failure (email sent, DB write lost = duplicate next run).
+- **30 candidate jobs, top 10 returned.** Per spec, "Don't increase the per-user candidate pool beyond ~30 jobs. Costs scale linearly with users."
+- **Email greeting uses email-prefix derivation** rather than a Clerk roundtrip or a new DB column. Trivial code, zero per-user cost.
+- **Email rendered server-side via Resend's `react:` parameter.** No separate render step; Resend handles it.
+- **No retry on email failures within a single cron run.** Failed emails just log; next-day run will see a previous-day digest exists and skip. Defer retry/admin replay until we have real volume.
+- **GET + POST both supported.** Vercel Cron uses GET. POST is for manual `curl -X POST -H "Authorization: Bearer $CRON_SECRET" ...` triggers during testing.
+
+**Blocked on user (Phase 4 DoD):**
+1. **Resend account + `RESEND_API_KEY`** in Vercel (Production) and `.env.local`. Free tier is fine; no domain needed if we keep `onboarding@resend.dev` as the sender. With that sender, Resend only delivers to the account owner's email — which is what we want for the first end-to-end test anyway.
+2. **`CRON_SECRET` in Vercel.** Two ways:
+   - Vercel auto-generates it the first time you configure a cron. Check Vercel dashboard → Project → Settings → Cron Jobs.
+   - Or set it manually: any high-entropy string is fine, e.g. `openssl rand -hex 32`.
+   Put the same value in `.env.local` for local manual tests.
+3. **Manual smoke test** once secrets are set:
+   ```
+   curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://job-cannon.vercel.app/api/cron/daily-digest
+   ```
+   Expected: `{"ok":true,"processed":1,"sent":1,"errors":0,"skipped":0,"digestDate":"2026-05-24"}` (or close to it). Then check your inbox + visit `/dashboard` to see the digest rendered there.
+4. **(Optional) Verify a sending domain in Resend** if you want emails from `digests@<your-domain>` instead of `onboarding@resend.dev`. Set `DIGEST_FROM_EMAIL=Job Cannon <digests@your-domain.com>` once verified.
+
+**Notes for tomorrow's first scheduled cron fire (8am ET):**
+- The cron will fire automatically per the `vercel.json` schedule once deployed. To validate without waiting: run the manual curl above any time after Resend + CRON_SECRET are set.
+- After today's manual run, calling the endpoint again will return all `skipped` (idempotency on `(userId, digestDate)`). To re-test, delete the day's row: `delete from daily_digests where digest_date = '2026-05-24';`
+
+**Next:** SaaS Phase 5 — landing page conversion polish (hero rewrite, nav bar, CTAs after free preview results). Phase 6 = launch checklist (migrations, live Stripe keys, analytics).
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
