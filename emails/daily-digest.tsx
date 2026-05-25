@@ -29,7 +29,7 @@ function scoreHex(score: number): string {
   return '#f43f5e'; // rose
 }
 
-function FatJobCard({ job, dashboardUrl }: { job: MatchedJob; dashboardUrl: string }) {
+function FatJobCard({ job }: { job: MatchedJob }) {
   return (
     <Section className="mb-4 rounded-lg border border-zinc-200 p-4">
       <table width="100%" cellPadding={0} cellSpacing={0} role="presentation">
@@ -82,7 +82,7 @@ function CompactJobRow({ job }: { job: MatchedJob }) {
         <tr>
           <td>
             <Text className="m-0 text-sm font-medium text-zinc-900">
-              <Link href={job.url} className="text-zinc-900 underline-offset-2 hover:underline">
+              <Link href={job.url} className="text-zinc-900 underline underline-offset-2">
                 {job.title}
               </Link>
             </Text>
@@ -119,11 +119,15 @@ export default function DailyDigestEmail({
   const rest = jobs.slice(3, 10);
   const preview = `Top match: ${jobs[0]?.title ?? 'no jobs today'} at ${jobs[0]?.company ?? ''}`;
 
+  // <Tailwind> wraps the entire <Html> so it can find the <head> element to
+  // inject style tags for non-inlineable utilities. Hover utilities are
+  // intentionally absent — most email clients (Outlook, much of webmail)
+  // strip them anyway, so static styling is more reliable.
   return (
-    <Html>
-      <Head />
-      <Preview>{preview}</Preview>
-      <Tailwind>
+    <Tailwind>
+      <Html>
+        <Head />
+        <Preview>{preview}</Preview>
         <Body className="bg-zinc-50 font-sans">
           <Container className="mx-auto my-8 max-w-xl rounded-lg bg-white p-6">
             <Heading as="h1" className="m-0 text-xl font-semibold text-zinc-900">
@@ -135,16 +139,22 @@ export default function DailyDigestEmail({
 
             <Hr className="my-5 border-zinc-200" />
 
-            <Heading as="h2" className="mt-0 mb-3 text-sm font-medium text-zinc-500 uppercase tracking-wide">
+            <Heading
+              as="h2"
+              className="mt-0 mb-3 text-sm font-medium uppercase tracking-wide text-zinc-500"
+            >
               Your top 3
             </Heading>
             {top.map(job => (
-              <FatJobCard key={job.id} job={job} dashboardUrl={dashboardUrl} />
+              <FatJobCard key={job.id} job={job} />
             ))}
 
             {rest.length > 0 && (
               <>
-                <Heading as="h2" className="mt-6 mb-2 text-sm font-medium text-zinc-500 uppercase tracking-wide">
+                <Heading
+                  as="h2"
+                  className="mt-6 mb-2 text-sm font-medium uppercase tracking-wide text-zinc-500"
+                >
                   Also worth a look
                 </Heading>
                 <Section>
@@ -168,13 +178,16 @@ export default function DailyDigestEmail({
             <Text className="text-center text-xs text-zinc-500">
               You&apos;re receiving this because you have an active Job Cannon subscription.
               <br />
-              <Link href={billingUrl} className="text-zinc-500 underline-offset-2 hover:underline">
+              <Link
+                href={billingUrl}
+                className="text-zinc-500 underline underline-offset-2"
+              >
                 Manage subscription or unsubscribe
               </Link>
             </Text>
           </Container>
         </Body>
-      </Tailwind>
-    </Html>
+      </Html>
+    </Tailwind>
   );
 }
