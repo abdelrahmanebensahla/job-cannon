@@ -483,3 +483,17 @@ Between the last assistant session and now the user closed two of the Phase 6 la
 2. **Phase 6 Step 3 itself** — Clerk → production instance. Walkthrough below.
 
 **Next:** Phase 6 Step 3 (Clerk production switchover). User-side dashboard work; full instructions are in the handoff doc. After Step 3 verifies, the path is Step 4 (Stripe live) → Step 5 (real-charge smoke test) → Step 6 (screenshots + repo polish).
+
+### Phase 6 Step 3 — Clerk → production ✅ closed (2026-05-24)
+
+User activated the Clerk production instance, recreated the webhook (`https://jobcannon.app/api/webhooks/clerk` → `user.created`, `user.deleted`), and updated the three Vercel env vars (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`) for the Production scope.
+
+**Gotcha that wasn't in the handoff doc — Clerk DNS records:** After activating a production instance, Clerk generates 4–5 subdomains (`clerk.*`, `accounts.*`, `clkmail.*`, `clk._domainkey.*`, `clk2._domainkey.*`) that require CNAME records in the user's DNS provider. Without these, the Clerk JS bundle script tag points at `https://clerk.jobcannon.app/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, which fails to resolve — the `<SignUp />` / `<SignIn />` widgets never hydrate, and `/sign-up` and `/sign-in` render blank.
+
+**Diagnosed via:** `curl -s https://jobcannon.app/sign-up | head` showed the page HTML had an empty `<main>` and the Clerk script tag pointed at a non-resolving subdomain. `nslookup clerk.jobcannon.app` returned NXDOMAIN.
+
+**Fixed by:** user added the required CNAME records (visible in Clerk dashboard → production instance → Domains) in Cloudflare DNS for `jobcannon.app`. **Critical:** each new CNAME must be set to **"DNS only" (grey cloud)** in Cloudflare — the orange-cloud proxy breaks Clerk's TLS handshake. DNS propagation took a few minutes; widgets rendered after that.
+
+**Documenting for future Clerk migrations:** The Clerk DNS records are a hidden requirement of the production switchover and easy to miss because the dashboard doesn't block instance activation on them. Always run `nslookup clerk.<your-domain>` as the first verification step after flipping prod keys; if it doesn't resolve, the rest of the integration is unreachable regardless of whether keys are correct.
+
+**Next:** Phase 6 Step 4 — Stripe → live mode.
