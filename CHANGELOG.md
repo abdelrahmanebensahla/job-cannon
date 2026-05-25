@@ -340,6 +340,26 @@ Also discovered (and acted on): Stripe holds failed webhook deliveries for 30 da
 
 **Next:** SaaS Phase 5 — landing page conversion polish (hero rewrite, nav bar, CTAs after free preview results). Phase 6 = launch checklist (migrations, live Stripe keys, analytics).
 
+### Phase 4 verification (closed 2026-05-24, late)
+
+End-to-end manual cron trigger:
+```
+{"ok":true,"processed":1,"sent":1,"errors":0,"skipped":0,"digestDate":"2026-05-24","details":[{"...","email":"abdelrahmane4216@gmail.com","status":"sent"}]}
+```
+Email arrived at `abdelrahmane4216@gmail.com` rendered as designed (top-3 fat cards, 7 compact rows, dashboard CTA, manage-sub footer).
+
+**Bugs caught during verification:**
+
+1. **Resend v6 SDK returns `{ data, error }` rather than throwing** on API errors. My initial code assumed `await emails.send(...)` would throw on failure — it doesn't, which made silent partial successes possible (`sentAt` getting set on a failed delivery). Fixed in `lib/email/send-digest.ts`: promote a non-null `error` to a thrown exception so the cron's `try/catch` sees the failure.
+2. **React Email's `<Tailwind>` wrapper must wrap the `<Html>` element, not sit inside it**, because the wrapper needs to find a `<head>` child somewhere in its subtree to inject style tags for non-inlineable utilities like `hover:underline`. Initial template had `<Tailwind>` only wrapping `<Body>` → component threw at render time with a useful error message. Fixed by restructuring to `<Tailwind><Html><Head /><Body>...</Body></Html></Tailwind>` and dropping all `hover:` utilities (they're unreliable across email clients anyway).
+3. **Vercel runtime logs collapse multi-line console output to one row per request in the API view** — `console.error` lines weren't surfaceable through the MCP tooling. Added a `details[]` array to the cron's JSON response so per-user outcomes are visible inline, no log spelunking needed.
+4. **Resend sandbox restriction discovered:** the default `onboarding@resend.dev` sender (free tier, no domain verification) only delivers to the **exact** email address on the Resend account. Gmail `+aliases` like `abdelrahmane4216+test1@gmail.com` count as different recipients. Workaround for verification: updated the test user's email column in Neon to the unaliased version. Long term (Phase 6) we need a verified sending domain.
+5. **Vercel env var changes don't propagate to existing deployments** — rotating `CRON_SECRET` after the latest deploy was built means the lambda still has the old value baked in. Required a manual "Redeploy" from the dashboard. Documented for the launch checklist.
+
+**Outcome:** all 4 cron status codes (`sent`, `skipped`, `inserted_no_email`, `error`) exercised in the wild. Idempotency on `(userId, digestDate)` confirmed. Concurrency-5 batching confirmed (trivially — only 1 subscriber, but the code path ran). Pipeline is wired correctly; productionizing for non-self recipients requires the Resend domain step in Phase 6.
+
+**Test state note:** the `users` row for `user_3EB8FrT34fC9HpHB8EjNEwgWUL7` now has email `abdelrahmane4216@gmail.com` instead of the original `+test1` alias. If you ever trigger a Clerk `user.updated` event, our `user.created` handler doesn't re-sync (we only handle `user.created` and `user.deleted` today). So the manual edit will persist unless you delete + recreate that test user in Clerk.
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
