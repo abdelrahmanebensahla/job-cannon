@@ -382,6 +382,55 @@ Email arrived at `abdelrahmane4216@gmail.com` rendered as designed (top-3 fat ca
 
 **Next:** SaaS Phase 6 — launch checklist. Drizzle migrations switchover, live Stripe keys, Resend domain verification, Vercel Analytics, README SaaS section, repo description/topics.
 
+## SaaS Phase 6 — Launch prep (code-side complete, user-side checklist below)
+
+**Date:** 2026-05-24
+
+**Completed (code-side):**
+- Installed `@vercel/analytics@2.0.1` and mounted `<Analytics />` in `app/layout.tsx`. Auto-collects pageviews + web vitals; visible in Vercel dashboard. Zero config beyond the import.
+- README rewritten as a launch-ready document:
+  - Hero leads with the live demo + a one-line product description, then explicitly steers recruiters to try the demo instead of reading.
+  - Extended mermaid diagram now shows both layers (free preview + paid SaaS) plus the nightly scrape side-channel.
+  - Dedicated "Why keyword pre-filter + LLM re-rank, not embeddings" section retained as the engineering signal piece.
+  - New "How the daily digest works (paid tier)" section walks through the cron loop.
+  - Pricing table ($9/mo, $79/yr, 7-day trial).
+  - Tech stack expanded as a table with all SaaS additions.
+  - Local setup includes db:push (dev) vs db:generate/db:migrate (production) workflow.
+  - Stripe CLI dev usage retained + cron local-testing curl snippet added.
+  - Env vars table extended with `DIGEST_FROM_EMAIL` (optional override once Resend domain is verified).
+  - Project layout updated to reflect the full route + module tree.
+
+**User-side launch checklist (DoD blockers):**
+
+1. **Switch to Drizzle migrations** before any production schema changes:
+   ```bash
+   pnpm db:generate            # emits db/migrations/0000_initial_schema.sql
+   ```
+   Because the schema is already applied via `db:push`, manually mark the initial migration as applied in your Neon DB so Drizzle doesn't try to re-create the tables:
+   ```sql
+   create table if not exists drizzle.__drizzle_migrations (
+     id serial primary key,
+     hash text not null,
+     created_at bigint
+   );
+   insert into drizzle.__drizzle_migrations (hash, created_at)
+   values ('<the hash printed by db:generate>', extract(epoch from now()) * 1000);
+   ```
+   From there, all future schema edits go through `db:generate` (commit the SQL) and `db:migrate` (apply in production).
+2. **Flip Stripe to live mode.** Recreate the two Prices ($9/mo, $79/yr) under the live key, copy the new `price_xxx` IDs into Vercel as `NEXT_PUBLIC_STRIPE_PRICE_MONTHLY` / `NEXT_PUBLIC_STRIPE_PRICE_YEARLY`, switch `STRIPE_SECRET_KEY` to `sk_live_...`, and create a NEW production webhook endpoint in the Stripe live dashboard pointing at `https://job-cannon.vercel.app/api/webhooks/stripe` — copy its signing secret to `STRIPE_WEBHOOK_SECRET`. Redeploy.
+3. **Switch Clerk to production mode.** Promote your dev instance, update the production webhook URL in Clerk's dashboard (still `/api/webhooks/clerk`), and copy the new publishable + secret + webhook signing keys into Vercel. Redeploy.
+4. **Verify a Resend sending domain** (5 min if you own a domain). Add the listed DNS records to your provider, wait for verification, then set `DIGEST_FROM_EMAIL=Job Cannon <digests@your-domain.com>` in Vercel. Without this you can't deliver to any recipient other than your own Resend account email.
+5. **End-to-end live test.** Sign up with a brand-new email → upload resume → start trial with a real card → wait for tomorrow's 8am ET cron → confirm email arrives → cancel through `/dashboard/billing` → refund yourself in the Stripe dashboard.
+6. **GitHub repo metadata.** Update repo description ("AI resume to job matching, paid daily digest"), topics: `nextjs`, `typescript`, `claude`, `ai`, `job-search`, `saas`, `stripe`, `clerk`.
+7. **README screenshot.** Replace `_(Screenshot will land here...)_` with a screenshot of the landing page and one of `/dashboard` with a real digest rendered.
+8. **Optional but good:** lock the dev Clerk and dev Neon to local-only use; create a separate Neon project + branch for production so prod data is isolated from dev experiments.
+
+**Decisions:**
+- **Held off on auto-generating the initial Drizzle migration** from this session because: (a) `drizzle-kit generate` requires `DATABASE_URL`, and (b) the user may have made manual schema tweaks in Neon (e.g., the email column edit) that aren't reflected in `db/schema.ts`. Documented the switchover process instead so the user can run it cleanly at their chosen migration cutover moment.
+- **Vercel Analytics import path:** `@vercel/analytics/next` (Next 16 picks up the App Router variant).
+
+**Next:** with the code-side complete, the SaaS expansion build is done. Anything from here is launch execution + post-launch iteration (re-engagement emails, team accounts, etc. — all explicitly out of scope per the spec).
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).
