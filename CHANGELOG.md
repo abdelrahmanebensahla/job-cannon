@@ -443,3 +443,43 @@ Email arrived at `abdelrahmane4216@gmail.com` rendered as designed (top-3 fat ca
 2. **Deploy to Vercel.** Import the GitHub repo in the Vercel dashboard. Set `ANTHROPIC_API_KEY` under Project Settings → Environment Variables. Trigger a deploy. The function defaults work but if `/api/match` ever 504s, check that the project is on the Pro plan or drop the pre-filter to 25 candidates per spec.
 3. **Update README.** Replace `_(coming after first Vercel deploy — see CHANGELOG.md)_` with the live URL. Take a screenshot of the landing page + a results page and add them in place of `_(Screenshot will land here...)_`. Commit.
 4. **Verify e2e.** Drop a real resume PDF on the production URL and confirm the round-trip works.
+
+---
+
+## Post-launch session — 2026-05-24 (user-side ops between sessions)
+
+Between the last assistant session and now the user closed two of the Phase 6 launch-checklist steps independently. Logging them here for canonical history:
+
+### Phase 6 Step 1 — Drizzle migrations switchover ✅ closed
+
+- `drizzle-kit generate` produced `db/migrations/0000_harsh_senator_kelly.sql` plus the `_journal.json` snapshot. Committed as `6b501ce drizzle`.
+- The user manually inserted a row into `drizzle.__drizzle_migrations` so Drizzle treats the initial schema as already applied (it was created via the earlier `db:push`). `pnpm db:migrate` now correctly skips it.
+- Workflow going forward: edit `db/schema.ts` → `pnpm db:generate` → review SQL → `pnpm db:migrate` → commit `db/migrations/*.sql` + `meta/_journal.json` together. Never `db:push` again.
+- Note: spec's "drizzle/" path is an artifact — actual emit path is `db/migrations/` per `drizzle.config.ts`. Keeping config as-is.
+
+### Phase 6 Step 2 — Resend domain + custom domain ✅ closed
+
+- Domain `jobcannon.app` purchased on Cloudflare Registrar.
+- DNS records (MX, SPF, DKIM, DMARC) in Cloudflare → verified in Resend.
+- Vercel project bound to `jobcannon.app` as the production domain.
+- `DIGEST_FROM_EMAIL=Job Cannon <digests@jobcannon.app>` set in Vercel; first sends confirmed.
+
+## Phase 6 Step 3 prep (this session) — Legacy URL scrub + `NEXT_PUBLIC_APP_URL` flag
+
+**Date:** 2026-05-24
+
+**Completed:**
+- `README.md` hero now points at [jobcannon.app](https://jobcannon.app/).
+- `.env.local.example` updated: `NEXT_PUBLIC_APP_URL` example flipped from `https://job-cannon.vercel.app` to `https://jobcannon.app` and the inline comment now flags it as **required** in production behind a custom domain.
+- `lib/app-url.ts` resolution-order doc-comment now explicitly calls out that `VERCEL_PROJECT_PRODUCTION_URL` resolves to the `.vercel.app` URL (not the custom domain), so `NEXT_PUBLIC_APP_URL` must be set explicitly when running on `jobcannon.app`.
+- `README.md` env vars table: `NEXT_PUBLIC_APP_URL` row promoted from `(optional)` to required-in-prod with a sample value.
+
+**Decisions:**
+- **Left historical CHANGELOG references to `job-cannon.vercel.app` intact.** Those entries describe state at specific past dates and were accurate then — rewriting would corrupt the audit trail. Only files that affect *current* behavior (hero link, env example, code comment) were updated.
+- **No `lib/app-url.ts` logic change.** The resolution order already prefers `NEXT_PUBLIC_APP_URL`; the gap was that the env var wasn't set in production. Documentation fix > code fix.
+
+**Blocked on user (must complete before Phase 6 Step 4):**
+1. **Set `NEXT_PUBLIC_APP_URL=https://jobcannon.app` in Vercel Production scope.** Without this, Stripe Checkout success/cancel URLs and email links in the daily digest will continue routing through `<project>.vercel.app` (the auto-detected production URL), which will (a) confuse users by bouncing them off `jobcannon.app` mid-flow and (b) cause Stripe live-mode webhooks to be configured against the wrong origin. Redeploy after setting.
+2. **Phase 6 Step 3 itself** — Clerk → production instance. Walkthrough below.
+
+**Next:** Phase 6 Step 3 (Clerk production switchover). User-side dashboard work; full instructions are in the handoff doc. After Step 3 verifies, the path is Step 4 (Stripe live) → Step 5 (real-charge smoke test) → Step 6 (screenshots + repo polish).

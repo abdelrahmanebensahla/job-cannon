@@ -1,6 +1,6 @@
 # Job Cannon
 
-**Live demo:** [job-cannon.vercel.app](https://job-cannon.vercel.app/)
+**Live demo:** [jobcannon.app](https://jobcannon.app/)
 
 Drop a resume PDF and get a ranked list of best-fit startup jobs with reasoning for each match. **Free preview** is public — no account, no email gating. **Paid plan** ($9/mo or $79/yr, 7-day free trial) delivers the top 10 to your inbox every weekday at 8am ET, with a 30-day match history dashboard.
 
@@ -166,7 +166,7 @@ Returns a `{ ok, processed, sent, errors, skipped, details[] }` summary includin
 | `RESEND_API_KEY`                      | SaaS            | cron handler                           | Daily email digest delivery.                  |
 | `DIGEST_FROM_EMAIL` (optional)        | SaaS            | cron handler                           | Override the sender once a Resend domain is verified. Defaults to `Job Cannon <onboarding@resend.dev>`. |
 | `CRON_SECRET`                         | SaaS            | `/api/cron/daily-digest`               | Bearer auth for Vercel Cron.                  |
-| `NEXT_PUBLIC_APP_URL` (optional)      | SaaS            | Stripe redirects, email links          | Override the auto-detected deploy URL.        |
+| `NEXT_PUBLIC_APP_URL`                 | SaaS (prod)     | Stripe redirects, email links          | Required in production with a custom domain (Vercel's auto-detect resolves to the `.vercel.app` URL). E.g. `https://jobcannon.app`. |
 
 The nightly GitHub Actions scrape needs **no secrets** — it only hits public JSON endpoints.
 

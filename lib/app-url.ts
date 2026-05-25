@@ -4,9 +4,11 @@
  * link (e.g. transactional emails).
  *
  * Resolution order:
- *   1. NEXT_PUBLIC_APP_URL (explicit override)
- *   2. VERCEL_PROJECT_PRODUCTION_URL (e.g. job-cannon.vercel.app on prod)
- *   3. VERCEL_URL (e.g. job-cannon-abc123.vercel.app on previews)
+ *   1. NEXT_PUBLIC_APP_URL (explicit override — REQUIRED in production
+ *      when running behind a custom domain like jobcannon.app, because
+ *      VERCEL_PROJECT_PRODUCTION_URL stays as the .vercel.app URL)
+ *   2. VERCEL_PROJECT_PRODUCTION_URL (e.g. <project>.vercel.app on prod)
+ *   3. VERCEL_URL (e.g. <project>-abc123.vercel.app on previews)
  *   4. http://localhost:3000 (dev fallback)
  */
 export function appUrl(path: string = ''): string {
