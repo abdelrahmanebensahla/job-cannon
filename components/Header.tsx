@@ -13,6 +13,12 @@ export function Header() {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
+            href="/#how-it-works"
+            className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
+          >
+            How it works
+          </Link>
+          <Link
             href="/pricing"
             className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
           >

@@ -360,6 +360,28 @@ Email arrived at `abdelrahmane4216@gmail.com` rendered as designed (top-3 fat ca
 
 **Test state note:** the `users` row for `user_3EB8FrT34fC9HpHB8EjNEwgWUL7` now has email `abdelrahmane4216@gmail.com` instead of the original `+test1` alias. If you ever trigger a Clerk `user.updated` event, our `user.created` handler doesn't re-sync (we only handle `user.created` and `user.deleted` today). So the manual edit will persist unless you delete + recreate that test user in Clerk.
 
+## SaaS Phase 5 — Landing conversion polish (built)
+
+**Date:** 2026-05-24
+
+**Completed:**
+- `app/page.tsx` — hero rewritten to "Startup jobs, AI-matched to your resume, delivered daily." with the spec-mandated subhead. Three new sections added below the existing match flow:
+  - `#how-it-works` — three-card grid (Drop / We rank ~5K jobs / See for free), with a link to the README's "How the matching works" deep-dive for the engineering audience.
+  - Pricing teaser — "Tomorrow morning, get them in your inbox" panel with explicit pricing + "See pricing" + "Start free trial" links, even for visitors who didn't run a preview.
+- `components/MatchClient.tsx`:
+  - Soft conversion CTA below the dropzone in the idle state — "Want this every morning? See pricing →".
+  - Loud banner CTA *after* the ranked results — "Get this delivered every morning at 8am. $9/mo or $79/yr · 7-day free trial · Cancel anytime" with a `<Link>` to `/pricing` styled as a primary button. Only renders when there are results (>0 matches) — empty-state users aren't a conversion target.
+- `components/Header.tsx` — added a `How it works` anchor link to `/#how-it-works` (hidden on mobile to keep the bar uncluttered).
+
+**Decisions:**
+- **No separate `/how-it-works` route** — kept the explanation inline on `/` per spec. Anchor links + `scroll-mt-24` for headroom under the sticky header.
+- **No gating on the banner CTA** based on signed-in/subscription state. Adding state-aware variants felt like overengineering for a single conversion surface; subscribed visitors who land on `/` should naturally re-route via `Dashboard` in the header anyway.
+- **Reused `buttonVariants` on `<Link>`** for the banner's primary CTA. Same shadcn limitation as Phase 1 — no `asChild` in this base-ui-flavored Button.
+
+**Blocked on user:** nothing — build is clean and all routes still register. Visual check welcome.
+
+**Next:** SaaS Phase 6 — launch checklist. Drizzle migrations switchover, live Stripe keys, Resend domain verification, Vercel Analytics, README SaaS section, repo description/topics.
+
 ### User decisions (end of 2026-05-22 session)
 
 - **GitHub remote:** user will create the repo + push themselves (no `gh` CLI install).

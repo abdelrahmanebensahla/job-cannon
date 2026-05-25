@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
+import Link from 'next/link';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
@@ -223,6 +224,26 @@ export function MatchClient() {
             ))}
           </ul>
         )}
+        {state.results.length > 0 && (
+          <Card className="border-foreground/20 bg-foreground/[0.04]">
+            <CardContent className="space-y-4 p-6 text-center sm:flex sm:items-center sm:justify-between sm:gap-6 sm:space-y-0 sm:text-left">
+              <div>
+                <h3 className="text-lg font-semibold tracking-tight">
+                  Get this delivered every morning at 8am.
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  $9/month or $79/year · 7-day free trial · Cancel anytime in the Stripe portal.
+                </p>
+              </div>
+              <Link
+                href="/pricing"
+                className={buttonVariants({ size: 'lg' }) + ' shrink-0'}
+              >
+                Start free trial →
+              </Link>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
@@ -230,6 +251,15 @@ export function MatchClient() {
   return (
     <div className="space-y-4">
       <Dropzone onFile={upload} />
+      <p className="text-center text-xs text-muted-foreground">
+        Want this every morning?{' '}
+        <Link
+          href="/pricing"
+          className="font-medium text-foreground/80 underline underline-offset-2 hover:text-foreground"
+        >
+          See pricing →
+        </Link>
+      </p>
       {state.kind === 'error' && (
         <Card>
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm">
