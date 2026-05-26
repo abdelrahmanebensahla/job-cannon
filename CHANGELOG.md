@@ -497,3 +497,53 @@ User activated the Clerk production instance, recreated the webhook (`https://jo
 **Documenting for future Clerk migrations:** The Clerk DNS records are a hidden requirement of the production switchover and easy to miss because the dashboard doesn't block instance activation on them. Always run `nslookup clerk.<your-domain>` as the first verification step after flipping prod keys; if it doesn't resolve, the rest of the integration is unreachable regardless of whether keys are correct.
 
 **Next:** Phase 6 Step 4 — Stripe → live mode.
+
+### Phase 6 Step 4 — partial via Stripe MCP (2026-05-24)
+
+User connected an MCP with **live-mode** write access to Stripe (`acct_1Ta6We2OPNNpBbdK`). Discovered + reconciled:
+
+- Live product `prod_UZF6LMyWJmUoNW` ("Job Cannon") already exists with two recurring prices:
+  - Monthly: `price_1Ta6cL2OPNNpBbdKm9dg7WxV` — $9/month
+  - Yearly: `price_1Ta6cL2OPNNpBbdKY4kOikjq` — **$80/year** (not the $79 the spec assumed)
+- Zero customers + zero subscriptions in live mode — clean pre-launch state.
+- Updated **all six** user-facing $79 references to $80 to match Stripe (the README hero + pricing table + env-vars table, `/pricing` price + savings badge, `/terms` subscription clause, landing page pricing teaser, `MatchClient` post-results banner, dashboard billing plan label). "Save $29" badge → "Save $28" ($108 - $80 = $28). Committed as `2524040`.
+
+**What the Stripe MCP can't do (by design):**
+- **Create webhook endpoints.** `stripe_api_search` returns nothing for `webhook` — Stripe deliberately makes endpoint signing secrets dashboard-only.
+- **Configure the Customer Portal.** Same — `billing_portal` / `customer portal` searches return nothing.
+- **Read API keys** (live or test).
+
+These three are dashboard-only by Stripe's design. Same for setting Vercel env vars (Vercel MCP is read-only).
+
+**Blocked on user — finish Step 4 by hand:**
+
+1. **Confirm `NEXT_PUBLIC_APP_URL=https://jobcannon.app`** is set in Vercel Production scope (still the gating prerequisite for Step 4 → 5).
+2. **Set / verify these four Vercel env vars** (Production scope; leave Preview + Development on test values):
+   ```
+   STRIPE_SECRET_KEY              = sk_live_...   (Stripe dashboard → Developers → API keys → live)
+   NEXT_PUBLIC_STRIPE_PRICE_MONTHLY = price_1Ta6cL2OPNNpBbdKm9dg7WxV
+   NEXT_PUBLIC_STRIPE_PRICE_YEARLY  = price_1Ta6cL2OPNNpBbdKY4kOikjq
+   STRIPE_WEBHOOK_SECRET          = whsec_...     (from step 4 below — DON'T reuse the test mode or Stripe CLI secret)
+   ```
+3. **Create the live webhook** in Stripe Dashboard → Developers → Webhooks → Add endpoint:
+   - URL: `https://jobcannon.app/api/webhooks/stripe`
+   - Events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+   - Copy the new `whsec_...` into `STRIPE_WEBHOOK_SECRET` above.
+4. **Configure the Customer Portal in live mode** at Stripe Dashboard → Settings → Billing → Customer portal:
+   - Allow cancellation
+   - Allow plan switching (between monthly ↔ yearly)
+   - Show invoice history
+5. **Redeploy Vercel** so the new env vars + portal config take effect.
+
+**Smoke-test plan (Step 5) once Step 4 is done:**
+- Incognito → sign up with fresh email on `jobcannon.app`
+- Upload resume on `/onboarding`
+- `/pricing` → Start free trial (monthly) with a real card — no charge during the 7-day trial
+- Land on `/dashboard?welcome=1`
+- Manually trigger cron (`curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://jobcannon.app/api/cron/daily-digest`)
+- Confirm email arrives from `digests@jobcannon.app`
+- `/dashboard/billing` → Customer Portal → cancel during trial
+- Verify in Stripe dashboard: subscription `canceled`, $0 charged
+- Verify in Neon: `users`, `resumes`, `subscriptions` rows all populated correctly
+
+**Next:** Phase 6 Step 5 — real-charge smoke test (after user finishes Step 4 dashboard work).
