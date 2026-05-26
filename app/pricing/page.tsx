@@ -45,7 +45,7 @@ export default async function PricingPage(props: { searchParams: SearchParams })
               <p className="mt-1 text-sm text-muted-foreground">Pay as you go.</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-semibold tracking-tight">$9</span>
+              <span className="text-4xl font-semibold tracking-tight">$8</span>
               <span className="text-sm text-muted-foreground">/month</span>
             </div>
             <ul className="space-y-2 text-sm text-foreground/90">
@@ -60,15 +60,15 @@ export default async function PricingPage(props: { searchParams: SearchParams })
         {/* Annual */}
         <Card className="relative border-foreground/30">
           <div className="absolute -top-3 right-6">
-            <Badge variant="secondary">Save $28</Badge>
+            <Badge variant="secondary">Save $36</Badge>
           </div>
           <CardContent className="space-y-5 p-6">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Annual</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Two months free.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Four months free.</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-semibold tracking-tight">$80</span>
+              <span className="text-4xl font-semibold tracking-tight">$60</span>
               <span className="text-sm text-muted-foreground">/year</span>
             </div>
             <ul className="space-y-2 text-sm text-foreground/90">

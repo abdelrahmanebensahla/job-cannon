@@ -21,7 +21,7 @@ export default function TermsPage() {
 
         <h2>Subscriptions</h2>
         <p>
-          Paid plans bill monthly ($9) or annually ($80) via Stripe. Every plan starts with a 7-day
+          Paid plans bill monthly ($8) or annually ($60) via Stripe. Every plan starts with a 7-day
           free trial. Cancel any time before the trial ends and you won&apos;t be charged. After the
           trial, you can cancel mid-period via the billing portal; access continues until the end
           of the current period and no further charges occur.
