@@ -86,7 +86,7 @@ export default function Home() {
           Tomorrow morning, get them in your inbox.
         </h2>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          The free preview is great for a snapshot. The paid plan ($9/mo or $79/yr, 7-day free
+          The free preview is great for a snapshot. The paid plan ($9/mo or $80/yr, 7-day free
           trial) delivers a fresh top-10 every weekday at 8am ET, with full reasoning for each
           match.
         </p>

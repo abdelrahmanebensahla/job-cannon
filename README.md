@@ -2,7 +2,7 @@
 
 **Live demo:** [jobcannon.app](https://jobcannon.app/)
 
-Drop a resume PDF and get a ranked list of best-fit startup jobs with reasoning for each match. **Free preview** is public — no account, no email gating. **Paid plan** ($9/mo or $79/yr, 7-day free trial) delivers the top 10 to your inbox every weekday at 8am ET, with a 30-day match history dashboard.
+Drop a resume PDF and get a ranked list of best-fit startup jobs with reasoning for each match. **Free preview** is public — no account, no email gating. **Paid plan** ($9/mo or $80/yr, 7-day free trial) delivers the top 10 to your inbox every weekday at 8am ET, with a 30-day match history dashboard.
 
 > Recruiters: skip the README — the live demo above takes 30 seconds to try.
 
@@ -76,7 +76,7 @@ Idempotency is upsert-based on the unique `(user_id, digest_date)` index, so the
 | Plan        | Price | Trial          | What you get                                                  |
 | ----------- | ----- | -------------- | ------------------------------------------------------------- |
 | **Monthly** | $9/mo | 7-day free     | Daily top-10 email · 30-day history · resume re-upload · cancel anytime |
-| **Annual**  | $79/yr | 7-day free     | Same, with two months free                                    |
+| **Annual**  | $80/yr | 7-day free     | Same, with two months free                                    |
 
 Billing is Stripe-hosted (Checkout + Customer Portal); no card details ever touch our server. Cancellation lives in the Stripe portal, accessible from `/dashboard/billing`.
 
@@ -162,7 +162,7 @@ Returns a `{ ok, processed, sent, errors, skipped, details[] }` summary includin
 | `STRIPE_SECRET_KEY`                   | SaaS            | server                                 | Stripe REST calls.                            |
 | `STRIPE_WEBHOOK_SECRET`               | SaaS            | `/api/webhooks/stripe`                 | Stripe webhook signature verification.        |
 | `NEXT_PUBLIC_STRIPE_PRICE_MONTHLY`    | SaaS            | `/api/checkout` (resolved server-side) | Stripe Price id for the $9/month plan.        |
-| `NEXT_PUBLIC_STRIPE_PRICE_YEARLY`     | SaaS            | `/api/checkout` (resolved server-side) | Stripe Price id for the $79/year plan.        |
+| `NEXT_PUBLIC_STRIPE_PRICE_YEARLY`     | SaaS            | `/api/checkout` (resolved server-side) | Stripe Price id for the $80/year plan.        |
 | `RESEND_API_KEY`                      | SaaS            | cron handler                           | Daily email digest delivery.                  |
 | `DIGEST_FROM_EMAIL` (optional)        | SaaS            | cron handler                           | Override the sender once a Resend domain is verified. Defaults to `Job Cannon <onboarding@resend.dev>`. |
 | `CRON_SECRET`                         | SaaS            | `/api/cron/daily-digest`               | Bearer auth for Vercel Cron.                  |

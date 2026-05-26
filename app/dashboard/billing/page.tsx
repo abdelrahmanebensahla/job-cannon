@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 function planLabel(priceId: string): string {
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY) return 'Monthly · $9/mo';
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY) return 'Annual · $79/yr';
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY) return 'Annual · $80/yr';
   return 'Custom plan';
 }
 

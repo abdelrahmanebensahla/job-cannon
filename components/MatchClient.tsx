@@ -232,7 +232,7 @@ export function MatchClient() {
                   Get this delivered every morning at 8am.
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  $9/month or $79/year · 7-day free trial · Cancel anytime in the Stripe portal.
+                  $9/month or $80/year · 7-day free trial · Cancel anytime in the Stripe portal.
                 </p>
               </div>
               <Link
