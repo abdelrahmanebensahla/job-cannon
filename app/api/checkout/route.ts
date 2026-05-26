@@ -12,10 +12,19 @@ const BodySchema = z.object({
   priceId: z.enum(['monthly', 'yearly']),
 });
 
-type CheckoutResponse = { ok: true; url: string } | { ok: false; error: string };
+type CheckoutResponse =
+  | { ok: true; url: string }
+  | { ok: false; error: string; detail?: string };
 
-function fail(error: string, status = 400): NextResponse<CheckoutResponse> {
-  return NextResponse.json({ ok: false, error }, { status });
+function fail(
+  error: string,
+  status = 400,
+  detail?: string,
+): NextResponse<CheckoutResponse> {
+  return NextResponse.json(
+    detail ? { ok: false, error, detail } : { ok: false, error },
+    { status },
+  );
 }
 
 export async function POST(request: Request): Promise<NextResponse<CheckoutResponse>> {
@@ -85,6 +94,7 @@ export async function POST(request: Request): Promise<NextResponse<CheckoutRespo
     return NextResponse.json({ ok: true, url: session.url });
   } catch (e) {
     console.error('Stripe checkout.create failed:', e);
-    return fail('stripe_checkout_failed', 502);
+    const detail = e instanceof Error ? e.message : 'unknown';
+    return fail('stripe_checkout_failed', 502, detail);
   }
 }
