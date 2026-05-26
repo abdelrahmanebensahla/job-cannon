@@ -54,6 +54,9 @@ export async function POST(request: Request): Promise<NextResponse<CheckoutRespo
     await ensureUser(userId);
   } catch (e) {
     console.error('ensureUser failed in checkout:', e);
+    if (e instanceof Error && e.message === 'email_conflict') {
+      return fail('email_conflict', 409);
+    }
     return fail('user_not_provisioned', 500);
   }
 

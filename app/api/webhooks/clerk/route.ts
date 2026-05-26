@@ -70,10 +70,36 @@ export async function POST(request: Request): Promise<NextResponse<WebhookRespon
         const data = (evt as ClerkUserCreated).data;
         const email = primaryEmail(data);
         if (!email) return fail('no_email_on_user');
-        await db
-          .insert(users)
-          .values({ id: data.id, email })
-          .onConflictDoNothing({ target: users.id });
+
+        // Two unique constraints exist on this table: id (PK) and email.
+        // Handle both idempotently:
+        //   - id conflict     = webhook redelivery for the same user
+        //   - email conflict  = a stale row (e.g. dev-instance artifact)
+        //                       is squatting on this email. We do NOT
+        //                       silently delete that row, because in
+        //                       long-running production it could be a
+        //                       paying customer with subscriptions and
+        //                       digest history that ON DELETE CASCADE
+        //                       would wipe. Log a warning and ack the
+        //                       webhook (so Clerk stops retrying); the
+        //                       row needs manual reconciliation.
+        try {
+          await db
+            .insert(users)
+            .values({ id: data.id, email })
+            .onConflictDoNothing({ target: users.id });
+        } catch (e) {
+          if (e instanceof Error && /duplicate key|23505|unique/i.test(e.message)) {
+            console.warn(
+              `Clerk webhook: user.created for id=${data.id} blocked by an existing row with the same email (${email}). Manual reconciliation needed.`,
+            );
+            return NextResponse.json({
+              ok: true,
+              handled: 'user.created:email_conflict_skipped',
+            });
+          }
+          throw e;
+        }
         return NextResponse.json({ ok: true, handled: 'user.created' });
       }
       case 'user.deleted': {

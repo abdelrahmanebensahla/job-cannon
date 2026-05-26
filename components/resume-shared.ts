@@ -15,6 +15,8 @@ export const RESUME_ERROR_COPY: Record<string, string> = {
   extraction_failed: "Claude couldn't read enough structure from that resume. Try a cleaner PDF.",
   user_not_provisioned:
     'Your account is still being set up. Refresh and try again in a few seconds.',
+  email_conflict:
+    'An older account is already using this email. Please contact support to reconcile.',
   resume_insert_failed: "Couldn't save your resume. Please retry.",
   resume_persist_failed: 'A database error stopped your resume from saving. Please retry.',
 };

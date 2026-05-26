@@ -18,6 +18,7 @@ const ERROR_COPY: Record<string, string> = {
   invalid_body: 'Bad request. Refresh and try again.',
   price_not_configured: 'Pricing not configured. Reach out to support.',
   user_not_provisioned: 'Your account is still being set up. Refresh and try again in a few seconds.',
+  email_conflict: 'An older account is already using this email. Please contact support to reconcile.',
   no_session_url: 'Stripe did not return a checkout URL.',
   stripe_checkout_failed: 'Stripe rejected the request. Please retry.',
 };

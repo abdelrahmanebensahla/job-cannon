@@ -24,11 +24,22 @@ export async function ensureUser(userId: string): Promise<User> {
     throw new Error('clerk_user_has_no_email');
   }
 
-  const [inserted] = await db
-    .insert(users)
-    .values({ id: userId, email })
-    .onConflictDoNothing({ target: users.id })
-    .returning();
+  let inserted: User | undefined;
+  try {
+    [inserted] = await db
+      .insert(users)
+      .values({ id: userId, email })
+      .onConflictDoNothing({ target: users.id })
+      .returning();
+  } catch (e) {
+    // Likely an email-unique conflict — another row already owns this
+    // email. Surface a distinct error so the API route can map it to a
+    // clearer user message than the generic 'user_not_provisioned'.
+    if (e instanceof Error && /duplicate key|23505|unique/i.test(e.message)) {
+      throw new Error('email_conflict');
+    }
+    throw e;
+  }
 
   if (inserted) return inserted;
 
