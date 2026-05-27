@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
 
-import { Header } from "@/components/Header";
+import { AppHeader } from "@/components/AppHeader";
+import { SubscriptionProvider } from "@/components/SubscriptionProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { getSubscriptionView } from "@/lib/subscription";
 
 import "./globals.css";
 
@@ -17,26 +20,43 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
 export const metadata: Metadata = {
-  title: "Job Cannon — AI resume to job matching",
-  description: "Upload a resume, get a ranked list of best-fit jobs with per-job match reasoning.",
+  title: "Job Cannon — AI startup jobs, matched to your resume",
+  description:
+    "Drop your resume. Get 10 startup matches in your inbox every weekday at 8am ET.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read subscription view once per request, server-side, and hand it to
+  // <SubscriptionProvider /> so client islands like <SubscriptionBadge />
+  // don't re-fetch. See HANDOFF.md for the single-source-of-truth contract.
+  const subscription = await getSubscriptionView();
+
   return (
     <ClerkProvider>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
-          <Header />
-          <div className="flex flex-1 flex-col">{children}</div>
-          <Analytics />
+          <ThemeProvider>
+            <SubscriptionProvider value={subscription}>
+              <AppHeader />
+              <div className="flex flex-1 flex-col">{children}</div>
+              <Analytics />
+            </SubscriptionProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>
