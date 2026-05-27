@@ -1,11 +1,17 @@
 import { SignIn } from '@clerk/nextjs';
 
+import { authAppearance } from '@/components/AuthAppearance';
+import { AuthEditorial } from '@/components/AuthEditorial';
+
 export default function SignInPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      {/* Existing users default to /dashboard. fallbackRedirectUrl honors
-          ?redirect_url= when present (e.g. middleware sent them here). */}
-      <SignIn fallbackRedirectUrl="/dashboard" />
+    <main className="mx-auto grid w-full max-w-5xl flex-1 grid-cols-1 lg:grid-cols-[1fr_1fr]">
+      <div className="flex items-center justify-center px-6 py-16 sm:py-24">
+        <div className="w-full max-w-sm">
+          <SignIn fallbackRedirectUrl="/dashboard" appearance={authAppearance} />
+        </div>
+      </div>
+      <AuthEditorial />
     </main>
   );
 }

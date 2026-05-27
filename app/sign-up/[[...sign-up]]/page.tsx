@@ -1,12 +1,17 @@
 import { SignUp } from '@clerk/nextjs';
 
+import { authAppearance } from '@/components/AuthAppearance';
+import { AuthEditorial } from '@/components/AuthEditorial';
+
 export default function SignUpPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      {/* New users always land on /onboarding first — resume upload is the
-          gate before billing. forceRedirectUrl overrides any redirect_url
-          query param so even users who came from /pricing still upload first. */}
-      <SignUp forceRedirectUrl="/onboarding" />
+    <main className="mx-auto grid w-full max-w-5xl flex-1 grid-cols-1 lg:grid-cols-[1fr_1fr]">
+      <div className="flex items-center justify-center px-6 py-16 sm:py-24">
+        <div className="w-full max-w-sm">
+          <SignUp forceRedirectUrl="/onboarding" appearance={authAppearance} />
+        </div>
+      </div>
+      <AuthEditorial />
     </main>
   );
 }

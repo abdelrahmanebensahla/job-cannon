@@ -26,12 +26,17 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Upload your resume</h1>
-        <p className="mt-2 max-w-xl text-base text-muted-foreground">
-          One upload. We extract a structured profile, then match it against fresh startup
-          jobs every weekday at 8am ET.
+    <main className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
+      <header className="mb-12">
+        <p className="text-[0.6875rem] uppercase tracking-wider text-muted-foreground">
+          Step 1 of 2
+        </p>
+        <h1 className="mt-3 font-display text-4xl tracking-tight sm:text-5xl">
+          Upload your resume.
+        </h1>
+        <p className="mt-4 max-w-xl text-[1.0625rem] leading-relaxed text-muted-foreground">
+          One upload. We extract a structured profile and match it against fresh startup roles
+          every weekday at 8am ET.
         </p>
       </header>
       <OnboardingClient />

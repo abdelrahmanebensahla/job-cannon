@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 
-import { Button } from '@/components/ui/button';
-
 type Props = {
   priceKey: 'monthly' | 'yearly';
   label: string;
@@ -58,12 +56,17 @@ export function CheckoutButton({ priceKey, label }: Props) {
   };
 
   return (
-    <div className="space-y-2">
-      <Button size="lg" className="w-full" disabled={loading || !isLoaded} onClick={onClick}>
+    <div className="space-y-3">
+      <button
+        type="button"
+        disabled={loading || !isLoaded}
+        onClick={onClick}
+        className="inline-flex h-11 w-full items-center justify-center border border-foreground bg-foreground text-[0.875rem] font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
         {loading ? 'Redirecting to Stripe…' : label}
-      </Button>
+      </button>
       {error && (
-        <p className="text-sm text-rose-500" role="alert">
+        <p className="text-[0.8125rem] text-[--color-destructive]" role="alert">
           {error}
         </p>
       )}
