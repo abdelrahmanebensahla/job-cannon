@@ -3,6 +3,8 @@
 import { useCallback, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
 
+import { cn } from '@/lib/utils';
+
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
 type Props = {
@@ -51,20 +53,24 @@ export function PdfDropzone({
     <div>
       <div
         {...getRootProps()}
-        className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-12 text-center transition-colors ${
+        className={cn(
+          'flex flex-col items-center justify-center border border-dashed px-6 py-16 text-center transition-colors',
           isDragActive
-            ? 'border-foreground/70 bg-muted/60'
-            : 'border-muted-foreground/30 hover:border-muted-foreground/60'
-        } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+            ? 'border-foreground'
+            : 'border-border hover:border-foreground/60',
+          disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+        )}
       >
         <input {...getInputProps()} />
-        <p className="text-base font-medium">{isDragActive ? 'Drop your resume…' : idleLabel}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          or click to choose a file · max 10 MB
+        <p className="text-[0.9375rem] font-medium text-foreground">
+          {isDragActive ? 'Drop your resume…' : idleLabel}
+        </p>
+        <p className="mt-1 text-[0.8125rem] text-muted-foreground">
+          or click to choose a file · PDF, max 10 MB
         </p>
       </div>
       {localError && (
-        <p className="mt-2 text-sm text-rose-500" role="alert">
+        <p className="mt-3 text-[0.8125rem] text-[--color-destructive]" role="alert">
           {localError}
         </p>
       )}

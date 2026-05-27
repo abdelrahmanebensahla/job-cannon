@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-
 type PortalResponse = { ok: true; url: string } | { ok: false; error: string };
 
 export function PortalButton() {
@@ -31,11 +29,16 @@ export function PortalButton() {
 
   return (
     <div className="space-y-2">
-      <Button size="lg" disabled={loading} onClick={onClick}>
-        {loading ? 'Opening portal…' : 'Manage billing in Stripe'}
-      </Button>
+      <button
+        type="button"
+        disabled={loading}
+        onClick={onClick}
+        className="inline-flex h-10 items-center border border-foreground bg-foreground px-5 text-[0.8125rem] font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {loading ? 'Opening portal…' : 'Manage in Stripe ↗'}
+      </button>
       {error && (
-        <p className="text-sm text-rose-500" role="alert">
+        <p className="text-[0.8125rem] text-[--color-destructive]" role="alert">
           {error}
         </p>
       )}

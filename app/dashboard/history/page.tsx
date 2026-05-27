@@ -1,7 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
-import { desc, eq, gte, and } from 'drizzle-orm';
+import { and, desc, eq, gte } from 'drizzle-orm';
 
-import { Card, CardContent } from '@/components/ui/card';
 import { JobCard } from '@/components/JobCard';
 import { db } from '@/db';
 import { dailyDigests } from '@/db/schema';
@@ -31,51 +30,48 @@ export default async function DashboardHistoryPage() {
     .orderBy(desc(dailyDigests.digestDate));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">History</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Past 30 days of digests. Click any entry to see the full 10.
+        <h1 className="font-display text-4xl tracking-tight">History</h1>
+        <p className="mt-2 text-[0.9375rem] text-muted-foreground">
+          Past 30 days. Each digest expands to the full 10 matches.
         </p>
       </header>
 
       {rows.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            No history yet. Your first digest lands tomorrow at 8am ET, and it&apos;ll show up here
-            after that.
-          </CardContent>
-        </Card>
+        <p className="border-t border-border pt-8 text-[0.9375rem] text-muted-foreground">
+          No history yet. Your first digest lands tomorrow at 8am ET, and it&apos;ll show up here after that.
+        </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="border-t border-border">
           {rows.map(row => {
             const jobs = row.jobs as MatchedJob[];
             const previewCompanies = jobs.slice(0, 3).map(j => j.company).join(' · ');
             return (
-              <li key={row.id}>
-                <Card>
-                  <CardContent className="p-0">
-                    <details className="group">
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 hover:bg-muted/50">
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium">{formatShortDate(row.digestDate)}</div>
-                          <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {previewCompanies || '(empty digest)'}
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-xs text-muted-foreground">
-                          <span className="group-open:hidden">Show 10 ▸</span>
-                          <span className="hidden group-open:inline">Hide ▾</span>
-                        </div>
-                      </summary>
-                      <div className="space-y-3 border-t bg-muted/30 p-4">
-                        {jobs.map(job => (
-                          <JobCard key={job.id} job={job} />
-                        ))}
+              <li key={row.id} className="border-b border-border">
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-baseline justify-between gap-6 py-6 transition-colors hover:bg-foreground/[0.02]">
+                    <div className="min-w-0">
+                      <div className="font-display text-xl tracking-tight">
+                        {formatShortDate(row.digestDate)}, {row.digestDate.slice(0, 4)}
                       </div>
-                    </details>
-                  </CardContent>
-                </Card>
+                      <div className="mt-1 truncate text-[0.8125rem] text-muted-foreground">
+                        {previewCompanies || '(empty digest)'}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-[0.8125rem] text-muted-foreground">
+                      <span className="group-open:hidden">View all {jobs.length} →</span>
+                      <span className="hidden group-open:inline">Hide ↑</span>
+                    </span>
+                  </summary>
+                  <div className="border-t border-border pb-2">
+                    <div className="divide-y divide-border">
+                      {jobs.map(job => (
+                        <JobCard key={job.id} job={job} />
+                      ))}
+                    </div>
+                  </div>
+                </details>
               </li>
             );
           })}

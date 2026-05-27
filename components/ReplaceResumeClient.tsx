@@ -3,10 +3,6 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent } from '@/components/ui/card';
 import { PdfDropzone } from './PdfDropzone';
 import { RESUME_ERROR_COPY, type ResumeApiResponse } from './resume-shared';
 
@@ -52,48 +48,45 @@ export function ReplaceResumeClient() {
 
   if (!open) {
     return (
-      <Button variant="outline" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex h-9 items-center border border-border bg-background px-4 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-foreground/[0.04]"
+      >
         Replace resume
-      </Button>
+      </button>
     );
   }
 
   if (state.kind === 'processing') {
     return (
-      <Card>
-        <CardContent className="space-y-5 p-5">
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between">
-              <p className="text-sm font-medium">Reading your new resume…</p>
-              <p className="text-xs text-muted-foreground">{state.fileName}</p>
-            </div>
-            <Progress value={null} />
-          </div>
-          <div className="space-y-3 border-t pt-4">
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="border border-border px-5 py-6">
+        <div className="flex items-baseline justify-between">
+          <p className="text-[0.9375rem] font-medium">Reading your new resume…</p>
+          <p className="text-[0.8125rem] text-muted-foreground">{state.fileName}</p>
+        </div>
+        <p className="mt-3 text-[0.8125rem] text-muted-foreground">
+          Extracting your profile. This usually takes 10–20 seconds.
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <PdfDropzone onFile={upload} idleLabel="Drop your new resume PDF here" />
       {state.kind === 'error' && (
-        <Card>
-          <CardContent className="flex items-center justify-between gap-3 p-4 text-sm">
-            <span className="text-rose-500">{state.message}</span>
-            <Button variant="outline" size="sm" onClick={() => setState({ kind: 'idle' })}>
-              Dismiss
-            </Button>
-          </CardContent>
-        </Card>
+        <p className="text-[0.8125rem] text-[--color-destructive]" role="alert">
+          {state.message}
+        </p>
       )}
-      <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-[0.8125rem] text-muted-foreground transition-colors hover:text-foreground"
+      >
         Cancel
-      </Button>
+      </button>
     </div>
   );
 }

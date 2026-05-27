@@ -6,10 +6,10 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const ITEMS = [
-  { href: '/dashboard', label: 'Today', mobileLabel: 'Today' },
-  { href: '/dashboard/history', label: 'History', mobileLabel: 'History' },
-  { href: '/dashboard/resume', label: 'Resume', mobileLabel: 'Resume' },
-  { href: '/dashboard/billing', label: 'Billing', mobileLabel: 'Billing' },
+  { href: '/dashboard', label: 'Today' },
+  { href: '/dashboard/history', label: 'History' },
+  { href: '/dashboard/resume', label: 'Resume' },
+  { href: '/dashboard/billing', label: 'Billing' },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
@@ -20,19 +20,20 @@ function isActive(pathname: string, href: string): boolean {
 export function DashboardSidebar() {
   const pathname = usePathname();
   return (
-    <nav className="hidden shrink-0 sm:block sm:w-44">
-      <ul className="sticky top-20 space-y-0.5 text-sm">
+    <nav className="hidden shrink-0 sm:block sm:w-40">
+      <ul className="sticky top-20 space-y-3 text-[0.9375rem]">
         {ITEMS.map(item => {
           const active = isActive(pathname, item.href);
           return (
             <li key={item.href}>
               <Link
                 href={item.href}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'block rounded-md px-3 py-1.5 transition-colors',
+                  'block py-1 transition-colors',
                   active
-                    ? 'bg-muted font-medium text-foreground'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {item.label}
@@ -48,7 +49,7 @@ export function DashboardSidebar() {
 export function DashboardBottomBar() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur sm:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background sm:hidden">
       <ul className="mx-auto grid max-w-md grid-cols-4">
         {ITEMS.map(item => {
           const active = isActive(pathname, item.href);
@@ -56,14 +57,15 @@ export function DashboardBottomBar() {
             <li key={item.href}>
               <Link
                 href={item.href}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex flex-col items-center justify-center py-2.5 text-xs transition-colors',
+                  'flex flex-col items-center justify-center py-3 text-[0.75rem] transition-colors',
                   active
                     ? 'font-medium text-foreground'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {item.mobileLabel}
+                {item.label}
               </Link>
             </li>
           );

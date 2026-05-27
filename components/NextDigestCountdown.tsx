@@ -3,11 +3,9 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Renders a human-readable countdown to the next cron run.
- * Cron: 13:00 UTC weekdays. That's 8am ET in DST, 9am EST in winter.
- *
- * We do the math in UTC and accept the +/- 1h drift across DST changes —
- * not worth wiring a tz library for v1.
+ * Live countdown to the next 13:00 UTC weekday cron run, rendered in big
+ * Newsreader display sizing per the locked design system. We accept the
+ * ~1h drift across DST changes without pulling in a tz library.
  */
 function nextCronUtc(now: Date): Date {
   const next = new Date(now);
@@ -15,14 +13,13 @@ function nextCronUtc(now: Date): Date {
   if (next <= now) {
     next.setUTCDate(next.getUTCDate() + 1);
   }
-  // Skip Sat (6) and Sun (0).
   while (next.getUTCDay() === 0 || next.getUTCDay() === 6) {
     next.setUTCDate(next.getUTCDate() + 1);
   }
   return next;
 }
 
-function formatGap(ms: number): string {
+function format(ms: number): string {
   if (ms <= 0) return 'any moment now';
   const totalMin = Math.floor(ms / 60_000);
   const days = Math.floor(totalMin / (24 * 60));
@@ -30,7 +27,7 @@ function formatGap(ms: number): string {
   const mins = totalMin % 60;
   const parts: string[] = [];
   if (days) parts.push(`${days}d`);
-  if (hours || days) parts.push(`${hours}h`);
+  parts.push(`${hours}h`);
   parts.push(`${mins}m`);
   return parts.join(' ');
 }
@@ -44,7 +41,10 @@ export function NextDigestCountdown() {
     return () => window.clearInterval(id);
   }, []);
 
-  if (!now) return <span className="opacity-60">…</span>;
+  if (!now) {
+    return <span aria-hidden>—</span>;
+  }
+
   const target = nextCronUtc(now);
-  return <span>{formatGap(target.getTime() - now.getTime())}</span>;
+  return <span>{format(target.getTime() - now.getTime())}</span>;
 }

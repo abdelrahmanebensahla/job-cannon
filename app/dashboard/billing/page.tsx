@@ -1,66 +1,61 @@
 import { auth } from '@clerk/nextjs/server';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { PortalButton } from '@/components/PortalButton';
+import { SubscriptionStatusBlock } from '@/components/SubscriptionStatusBlock';
 import { getCurrentSubscription } from '@/lib/stripe/subscription';
-import { formatLongDate } from '@/lib/date';
+import { getSubscriptionView } from '@/lib/subscription';
 
 export const dynamic = 'force-dynamic';
 
-function planLabel(priceId: string): string {
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY) return 'Monthly · $8/mo';
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY) return 'Annual · $60/yr';
-  return 'Custom plan';
+function planLabel(priceId: string | null | undefined): string {
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY) return 'Monthly';
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY) return 'Annual';
+  return 'Custom';
+}
+
+function planPrice(priceId: string | null | undefined): string {
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY) return '$8 / month';
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY) return '$60 / year';
+  return '—';
 }
 
 export default async function DashboardBillingPage() {
   const { userId } = await auth();
   const sub = (await getCurrentSubscription(userId!))!;
+  const view = await getSubscriptionView();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Billing</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="font-display text-4xl tracking-tight">Billing</h1>
+        <p className="mt-2 text-[0.9375rem] text-muted-foreground">
           Subscription, invoices, and payment methods.
         </p>
       </header>
 
-      <Card>
-        <CardContent className="space-y-4 p-5">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="text-base font-semibold tracking-tight">{planLabel(sub.priceId)}</h2>
-            <Badge variant="secondary" className="capitalize">
-              {sub.status}
-            </Badge>
-            {sub.cancelAtPeriodEnd && <Badge variant="outline">Cancels at period end</Badge>}
-          </div>
+      <section className="border-t border-b border-border py-8">
+        <div className="font-display text-3xl tracking-tight">
+          {planLabel(sub.priceId)}
+          <span className="text-muted-foreground"> · {planPrice(sub.priceId)}</span>
+        </div>
+        <div className="mt-4">
+          <SubscriptionStatusBlock view={view} />
+        </div>
+      </section>
 
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-muted-foreground">
-                {sub.cancelAtPeriodEnd ? 'Access through' : 'Renews on'}
-              </dt>
-              <dd className="font-medium">{formatLongDate(sub.currentPeriodEnd)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Stripe customer</dt>
-              <dd className="truncate font-mono text-xs text-foreground/80">
-                {sub.stripeCustomerId}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
-
-      <section className="space-y-3 border-t pt-6">
-        <h2 className="text-lg font-semibold tracking-tight">Manage subscription</h2>
-        <p className="text-sm text-muted-foreground">
-          Cancellations, plan changes, invoices, and payment-method updates all live in Stripe&apos;s
-          hosted portal. You&apos;ll come back here when done.
+      <section className="border-t border-border pt-8">
+        <h2 className="font-display text-xl tracking-tight">Manage subscription</h2>
+        <p className="mt-2 max-w-prose text-[0.9375rem] text-muted-foreground">
+          Cancel, switch plans, view invoices, or update your payment method in Stripe&apos;s hosted portal. You&apos;ll come back here when done.
         </p>
-        <PortalButton />
+        <div className="mt-5">
+          <PortalButton />
+        </div>
+
+        <p className="mt-8 text-[0.6875rem] uppercase tracking-wider text-muted-foreground">
+          Stripe customer
+        </p>
+        <p className="mt-1 font-mono text-[0.8125rem] text-foreground/80">{sub.stripeCustomerId}</p>
       </section>
     </div>
   );

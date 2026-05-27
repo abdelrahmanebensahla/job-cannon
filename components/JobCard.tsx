@@ -1,13 +1,4 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MatchScoreRing } from './MatchScoreRing';
 import type { MatchedJob } from '@/lib/types';
-
-const SOURCE_LABEL: Record<MatchedJob['source'], string> = {
-  greenhouse: 'Greenhouse',
-  lever: 'Lever',
-  remoteok: 'RemoteOK',
-};
 
 function formatPosted(iso: string): string | null {
   const ms = Date.parse(iso);
@@ -21,53 +12,64 @@ function formatPosted(iso: string): string | null {
   return `${Math.round(months / 12)}y ago`;
 }
 
+/**
+ * Job card per the locked design system. Pure typography — no ring, no
+ * progress bar, no colored badge. No card background, no shadow. The
+ * containing list applies the hairline border between cards via
+ * `divide-y` so this component is self-contained but composes cleanly.
+ */
 export function JobCard({ job }: { job: MatchedJob }) {
   const posted = formatPosted(job.posted_at);
+
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
-        <div className="shrink-0">
-          <MatchScoreRing score={job.match_score} size={64} />
+    <article className="grid gap-6 py-8 sm:grid-cols-[1fr_auto]">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="font-display text-xl tracking-tight">{job.company}</h3>
+          {job.location && (
+            <span className="text-[0.8125rem] text-muted-foreground">{job.location}</span>
+          )}
+          {job.remote && (
+            <span className="inline-flex items-center border border-border px-1.5 py-0.5 text-[0.6875rem] uppercase tracking-wide text-muted-foreground">
+              Remote
+            </span>
+          )}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <h3 className="text-base font-semibold tracking-tight">{job.title}</h3>
-            <span className="text-sm text-muted-foreground">·</span>
-            <span className="text-sm font-medium text-muted-foreground">{job.company}</span>
-          </div>
+        <p className="mt-1 text-[0.9375rem] text-foreground">{job.title}</p>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {job.location && <span className="truncate max-w-[18rem]">{job.location}</span>}
-            {job.remote && <Badge variant="secondary">Remote</Badge>}
-            {posted && <span>· {posted}</span>}
-            <Badge variant="outline" className="ml-auto">
-              {SOURCE_LABEL[job.source]}
-            </Badge>
-          </div>
+        {posted && (
+          <p className="mt-1 text-[0.8125rem] text-muted-foreground">Posted {posted}</p>
+        )}
 
-          <details className="group mt-3">
-            <summary className="cursor-pointer list-none text-sm text-foreground/90 hover:underline">
-              <span className="group-open:hidden">Why this fits ▸</span>
-              <span className="hidden group-open:inline">Why this fits ▾</span>
-            </summary>
-            <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-              {job.reasoning}
-            </p>
-          </details>
+        <details className="group mt-4">
+          <summary className="cursor-pointer list-none text-[0.8125rem] text-muted-foreground transition-colors hover:text-foreground">
+            <span className="group-open:hidden">Why this match ↓</span>
+            <span className="hidden group-open:inline">Hide reasoning ↑</span>
+          </summary>
+          <p className="mt-3 max-w-prose whitespace-pre-line text-[0.9375rem] leading-relaxed text-foreground/80">
+            {job.reasoning}
+          </p>
+        </details>
 
-          <div className="mt-4">
-            <a
-              href={job.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              View job →
-            </a>
-          </div>
+        <a
+          href={job.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 inline-flex text-[0.8125rem] font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          Apply ↗
+        </a>
+      </div>
+
+      <div className="text-right sm:pl-8">
+        <div className="font-display text-[2.75rem] leading-none tracking-tight tabular-nums">
+          {Math.round(job.match_score)}
         </div>
-      </CardContent>
-    </Card>
+        <div className="mt-1 text-[0.6875rem] uppercase tracking-wider text-muted-foreground">
+          match
+        </div>
+      </div>
+    </article>
   );
 }
