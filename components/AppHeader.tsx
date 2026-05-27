@@ -15,7 +15,7 @@ export function AppHeader() {
       <nav className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
-          className="font-display text-base tracking-tight text-foreground"
+          className="font-display text-[0.9375rem] tracking-tight text-foreground"
         >
           Job Cannon
         </Link>

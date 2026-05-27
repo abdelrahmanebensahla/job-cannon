@@ -12,7 +12,7 @@ const YEARLY_PRICE = '$60/year';
 export function SubscriptionStatusBlock({ view }: { view: SubscriptionView }) {
   if (view.state === 'free' || view.state === 'loading') {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[0.8125rem] text-muted-foreground">
         No active subscription on file. <a href="/pricing" className="text-foreground underline underline-offset-2">See pricing →</a>
       </p>
     );
@@ -20,7 +20,7 @@ export function SubscriptionStatusBlock({ view }: { view: SubscriptionView }) {
 
   if (view.state === 'trialing') {
     return (
-      <p className="text-sm">
+      <p className="text-[0.8125rem]">
         <span className="font-medium text-foreground">Free trial</span>
         <span className="text-muted-foreground">
           {' '}· ends {formatLongDate(view.endsAt)} · then {MONTHLY_PRICE}
@@ -32,7 +32,7 @@ export function SubscriptionStatusBlock({ view }: { view: SubscriptionView }) {
   if (view.state === 'active') {
     const cadence = view.interval === 'year' ? YEARLY_PRICE : MONTHLY_PRICE;
     return (
-      <p className="text-sm">
+      <p className="text-[0.8125rem]">
         <span className="font-medium text-foreground">Active</span>
         <span className="text-muted-foreground">
           {' '}· renews {formatLongDate(view.renewsAt)} · {cadence}
@@ -43,7 +43,7 @@ export function SubscriptionStatusBlock({ view }: { view: SubscriptionView }) {
 
   if (view.state === 'past_due') {
     return (
-      <p className="text-sm text-[--color-destructive]">
+      <p className="text-[0.8125rem] text-[--color-destructive]">
         Payment failed · update your card to continue receiving digests.
       </p>
     );
@@ -51,7 +51,7 @@ export function SubscriptionStatusBlock({ view }: { view: SubscriptionView }) {
 
   // canceled
   return (
-    <p className="text-sm">
+    <p className="text-[0.8125rem]">
       <span className="font-medium text-foreground">Canceled</span>
       <span className="text-muted-foreground">
         {' '}· access ends {formatLongDate(view.endsAt)}

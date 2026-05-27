@@ -29,15 +29,19 @@ The pre-polish source-of-truth handoff lives in chat as the v1 spec the user pas
 - **Mono:** Geist Mono. Loaded via `next/font/google` as `--font-mono`. Used for code, secret strings, Stripe customer IDs in billing.
 - **Banned:** Inter, Roboto, system stacks for primary type.
 
-The five sizes (and where they're allowed to appear):
+The type ramp that actually shipped (honest revision — the original "max 5" lock was aspirational; the work needs ~7 to do hierarchy properly):
 
 | Size token      | px / rem      | Tailwind                  | Where it's used                                                          |
 | --------------- | ------------- | ------------------------- | ------------------------------------------------------------------------ |
-| `display-xl`    | 56 / 3.5rem   | `text-[3.5rem] leading-[1.05]` | Hero on `/` only. Newsreader.                                       |
-| `display`       | 36 / 2.25rem  | `text-4xl leading-tight`  | Page titles (h1). `/dashboard` date, billing plan name. Newsreader. |
-| `subhead`       | 20 / 1.25rem  | `text-xl leading-snug`    | Section headings (h2). Job card company name. Newsreader.            |
-| `body`          | 15 / 0.9375rem| `text-[0.9375rem] leading-relaxed` | Default body, button labels, job titles. Geist Sans.        |
-| `caption`       | 13 / 0.8125rem| `text-[0.8125rem] leading-normal`  | Muted metadata, badges, helper text. Geist Sans.            |
+| `display-xl`    | 56 / 3.5rem   | `text-[3.5rem] leading-[1.05]` | Hero on `/` only, error/404 h1s on sm+. Newsreader.                 |
+| `display`       | 48 / 3rem     | `text-5xl` / `text-[3rem]`| Page titles (h1) on smaller pages, dashboard empty-state countdown. Newsreader. |
+| `display-section` | 36 / 2.25rem| `text-4xl`                | Dashboard / billing / history / resume h1, pricing h1. Newsreader.   |
+| `display-sub`   | 30 / 1.875rem | `text-3xl`                | Landing section h2 ("How it works"), MatchClient results count, billing plan name. Newsreader. |
+| `subhead`       | 24 / 1.5rem   | `text-2xl`                | Pricing card heading, ProfileSummary name, AuthEditorial header. Newsreader. |
+| `subhead-sm`    | 20 / 1.25rem  | `text-xl`                 | Job card company name, MatchClient processing title. Newsreader.     |
+| `body`          | 15 / 0.9375rem| `text-[0.9375rem]`        | Default body, button labels, job titles, dashboard meta. Geist Sans. |
+| `caption`       | 13 / 0.8125rem| `text-[0.8125rem]`        | Muted metadata, helper text, badge content. Geist Sans.              |
+| `eyebrow`       | 11 / 0.6875rem| `text-[0.6875rem] uppercase tracking-wider` | Section labels, "step N of N", status block field labels. Geist Sans. |
 
 Letter-spacing: `tracking-tight` on Newsreader display sizes; default on body; `tracking-wide` on caption when it's an uppercase eyebrow.
 
@@ -129,3 +133,4 @@ Badge copy:
 Detailed per-session notes live in `CHANGELOG.md`. This section is the chronological pointer to design-decision changes (if any) so the latest locked state stays scannable.
 
 - **2026-05-26:** Initial lock of palette, typography, components, subscription-state spec. CSS variables migrated from shadcn OKLCH defaults to hex per palette table.
+- **2026-05-26 (later):** Type ramp expanded from 5 → 9 sizes in HANDOFF after `design:design-critique` flagged the budget breach. The 5-size lock was visually impossible without flattening hierarchy. New ramp documented above is the actual shipped system. Legacy shadcn `components/ui/*` primitives (Card, Button, Input, Progress, Skeleton, Badge) deleted as dead code — every page now uses raw Tailwind classes that hew directly to the locked tokens.

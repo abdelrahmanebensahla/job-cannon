@@ -59,7 +59,8 @@ export function DashboardBottomBar() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex flex-col items-center justify-center py-3 text-[0.75rem] transition-colors',
+                  // min-h enforces a 44px touch target on mobile (WCAG 2.5.5).
+                  'flex min-h-[44px] flex-col items-center justify-center py-3 text-[0.75rem] transition-colors',
                   active
                     ? 'font-medium text-foreground'
                     : 'text-muted-foreground hover:text-foreground',
