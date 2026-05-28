@@ -13,23 +13,38 @@ export function todayInET(now: Date = new Date()): string {
 }
 
 /**
- * Pretty-prints a YYYY-MM-DD date string (or a Date) as e.g. "May 24".
+ * Parse the date input into a Date. Accepts:
+ *   - A Date instance (returned as-is).
+ *   - A YYYY-MM-DD date-only string — anchored at 12:00 UTC so the ET
+ *     formatter never rolls back to the previous day for timezones west
+ *     of UTC.
+ *   - A full ISO 8601 string (e.g. from new Date().toISOString()) — parsed
+ *     directly; SubscriptionView fields like `endsAt` and `renewsAt` come
+ *     through this path. Without the length check, the legacy
+ *     `input + 'T12:00:00Z'` would corrupt an ISO string and throw
+ *     "Invalid time value" at format time.
+ */
+function toDate(input: string | Date): Date {
+  if (typeof input !== 'string') return input;
+  return new Date(input.length === 10 ? input + 'T12:00:00Z' : input);
+}
+
+/**
+ * Pretty-prints a YYYY-MM-DD date string, ISO string, or Date as e.g. "May 24".
  */
 export function formatShortDate(input: string | Date): string {
-  const d = typeof input === 'string' ? new Date(input + 'T12:00:00Z') : input;
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     timeZone: 'America/New_York',
-  }).format(d);
+  }).format(toDate(input));
 }
 
 export function formatLongDate(input: string | Date): string {
-  const d = typeof input === 'string' ? new Date(input + 'T12:00:00Z') : input;
   return new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
     timeZone: 'America/New_York',
-  }).format(d);
+  }).format(toDate(input));
 }
