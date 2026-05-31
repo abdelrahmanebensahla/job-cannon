@@ -3,7 +3,8 @@
 import { SignIn, SignUp } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+
+import { useIsHydrated } from '@/lib/use-hydrated';
 
 /**
  * Client wrapper around Clerk's <SignIn /> and <SignUp />. Two reasons it
@@ -55,16 +56,12 @@ const SHARED_APPEARANCE = {
 
 export function AuthForm({ mode }: Props) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useIsHydrated();
 
   // next-themes only knows the resolved theme after first client render. To
   // avoid the widget mounting with the wrong baseTheme and flashing, we
-  // render an invisible placeholder of equivalent height until mounted.
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
+  // render an invisible placeholder of equivalent height until hydrated.
+  if (!hydrated) {
     return <div aria-hidden className="h-[420px]" />;
   }
 

@@ -7,7 +7,6 @@ type Db = NeonHttpDatabase<typeof schema>;
 
 declare global {
   // Reuse the client across HMR + module reloads in dev.
-  // eslint-disable-next-line no-var
   var __drizzle__: Db | undefined;
 }
 

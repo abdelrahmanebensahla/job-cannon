@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { useIsHydrated } from '@/lib/use-hydrated';
+
 /**
  * Live countdown to the next 13:00 UTC weekday cron run, rendered in big
  * Newsreader display sizing per the locked design system. We accept the
@@ -33,15 +35,19 @@ function format(ms: number): string {
 }
 
 export function NextDigestCountdown() {
-  const [now, setNow] = useState<Date | null>(null);
+  const hydrated = useIsHydrated();
+  // Lazy init to the client clock; only read once `hydrated`, so the value
+  // never reaches the server render and can't cause a hydration mismatch. The
+  // interval keeps it fresh — setState lives in the timer callback, not the
+  // effect body, so it stays clear of react-hooks/set-state-in-effect.
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    setNow(new Date());
     const id = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(id);
   }, []);
 
-  if (!now) {
+  if (!hydrated) {
     return <span aria-hidden>—</span>;
   }
 
