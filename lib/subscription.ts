@@ -29,7 +29,13 @@ function daysBetween(end: Date, now: Date): number {
   return Math.max(0, Math.ceil(ms / 86_400_000));
 }
 
-function toView(sub: Subscription | null, now: Date = new Date()): SubscriptionView {
+/**
+ * Pure mapper from a subscription row to the view model. Exported so a server
+ * component that already holds the row can derive the view without a second
+ * query — e.g. the landing page, which also needs `hasActiveSubscription(sub)`
+ * for the entitlement gate and so fetches the row directly.
+ */
+export function toView(sub: Subscription | null, now: Date = new Date()): SubscriptionView {
   if (!sub) return { state: 'free' };
 
   const endsAt = sub.currentPeriodEnd;
