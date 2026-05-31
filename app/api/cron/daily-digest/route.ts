@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, gt, inArray, or } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { dailyDigests, resumes, subscriptions, users } from '@/db/schema';
@@ -53,7 +53,15 @@ async function eligibleSubscribers(): Promise<Eligible[]> {
     .from(users)
     .innerJoin(subscriptions, eq(subscriptions.userId, users.id))
     .innerJoin(resumes, and(eq(resumes.userId, users.id), eq(resumes.isActive, true)))
-    .where(inArray(subscriptions.status, ['trialing', 'active']));
+    // Mirror hasActiveSubscription (db/schema.ts): trialing/active qualify, and
+    // a canceled sub whose paid period hasn't elapsed still qualifies — they
+    // paid through currentPeriodEnd, so they keep getting digests until then.
+    .where(
+      or(
+        inArray(subscriptions.status, ['trialing', 'active']),
+        and(eq(subscriptions.status, 'canceled'), gt(subscriptions.currentPeriodEnd, new Date())),
+      ),
+    );
 
   // A user with multiple active subs (rare but possible) shows up multiple
   // times. Collapse to one row per userId.
