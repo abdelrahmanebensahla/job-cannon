@@ -67,7 +67,23 @@ export type NewDailyDigest = typeof dailyDigests.$inferInsert;
 
 export const ACTIVE_SUB_STATUSES = ['trialing', 'active'] as const;
 
+/**
+ * Has the user paid for a period that is still ongoing?
+ *
+ * Trialing + active obviously qualify. A canceled subscription whose
+ * current_period_end is in the future also qualifies — the user paid for
+ * (or is trialing) a window that hasn't elapsed yet, and standard billing
+ * convention is to honor that window. Stripe's `subscriptions.cancel(id)`
+ * marks status='canceled' immediately but leaves current_period_end at its
+ * original value, so we use the date comparison as the source of truth.
+ *
+ * Once current_period_end is in the past, a canceled sub stops granting
+ * access. past_due / incomplete fall through to false; we don't grant a
+ * dunning grace period in v1.
+ */
 export function hasActiveSubscription(sub: Subscription | null | undefined): boolean {
   if (!sub) return false;
-  return (ACTIVE_SUB_STATUSES as readonly string[]).includes(sub.status);
+  if ((ACTIVE_SUB_STATUSES as readonly string[]).includes(sub.status)) return true;
+  if (sub.status === 'canceled' && sub.currentPeriodEnd > new Date()) return true;
+  return false;
 }
