@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  index,
   jsonb,
   pgTable,
   text,
@@ -9,7 +10,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import type { MatchedJob, Profile } from '@/lib/types';
+import type { MatchedJob, Profile, ResumeReview } from '@/lib/types';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(), // Clerk user id
@@ -56,6 +57,20 @@ export const dailyDigests = pgTable(
   table => [uniqueIndex('daily_digest_user_date').on(table.userId, table.digestDate)],
 );
 
+export const resumeReviews = pgTable(
+  'resume_reviews',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    filename: text('filename').notNull(), // source PDF name, for display only (PDF not stored)
+    review: jsonb('review').$type<ResumeReview>().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  table => [index('resume_reviews_user').on(table.userId, table.createdAt)],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Subscription = typeof subscriptions.$inferSelect;
@@ -64,6 +79,8 @@ export type Resume = typeof resumes.$inferSelect;
 export type NewResume = typeof resumes.$inferInsert;
 export type DailyDigest = typeof dailyDigests.$inferSelect;
 export type NewDailyDigest = typeof dailyDigests.$inferInsert;
+export type ResumeReviewRow = typeof resumeReviews.$inferSelect;
+export type NewResumeReviewRow = typeof resumeReviews.$inferInsert;
 
 export const ACTIVE_SUB_STATUSES = ['trialing', 'active'] as const;
 

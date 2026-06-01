@@ -19,4 +19,6 @@ export const RESUME_ERROR_COPY: Record<string, string> = {
     'An older account is already using this email. Please contact support to reconcile.',
   resume_insert_failed: "Couldn't save your resume. Please retry.",
   resume_persist_failed: 'A database error stopped your resume from saving. Please retry.',
+  not_subscribed: 'Resume review is a subscriber feature. Start a plan to use it.',
+  review_failed: "Claude couldn't produce a review from that PDF. Try a cleaner export and retry.",
 };

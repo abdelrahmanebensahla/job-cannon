@@ -9,6 +9,7 @@ const ITEMS = [
   { href: '/dashboard', label: 'Today' },
   { href: '/dashboard/history', label: 'History' },
   { href: '/dashboard/resume', label: 'Resume' },
+  { href: '/dashboard/review', label: 'Review' },
   { href: '/dashboard/billing', label: 'Billing' },
 ] as const;
 
@@ -50,7 +51,7 @@ export function DashboardBottomBar() {
   const pathname = usePathname();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background sm:hidden">
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {ITEMS.map(item => {
           const active = isActive(pathname, item.href);
           return (

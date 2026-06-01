@@ -53,3 +53,31 @@ export type MatchedJob = Job & {
   match_score: number;
   reasoning: string;
 };
+
+export const ResumeReviewSchema = z.object({
+  overall_score: z.number().min(0).max(100),
+  summary: z.string().max(800),
+  strengths: z.array(z.string().max(300)).max(6),
+  weaknesses: z.array(z.string().max(300)).max(6),
+  section_feedback: z
+    .array(
+      z.object({
+        section: z.string().max(60),
+        assessment: z.string().max(400),
+        suggestions: z.array(z.string().max(300)).max(5),
+      }),
+    )
+    .max(8),
+  revision_suggestions: z
+    .array(
+      z.object({
+        original: z.string().max(400),
+        revised: z.string().max(400),
+        rationale: z.string().max(300),
+      }),
+    )
+    .max(8),
+  recommendations: z.array(z.string().max(300)).max(8),
+});
+
+export type ResumeReview = z.infer<typeof ResumeReviewSchema>;
