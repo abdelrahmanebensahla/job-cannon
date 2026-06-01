@@ -20,5 +20,6 @@ export const RESUME_ERROR_COPY: Record<string, string> = {
   resume_insert_failed: "Couldn't save your resume. Please retry.",
   resume_persist_failed: 'A database error stopped your resume from saving. Please retry.',
   not_subscribed: 'Resume review is a subscriber feature. Start a plan to use it.',
-  review_failed: "Claude couldn't produce a review from that PDF. Try a cleaner export and retry.",
+  review_failed: "Claude couldn't generate a review just now. Please try again.",
+  no_active_resume: 'No active resume found. Upload one on the Resume page first.',
 };

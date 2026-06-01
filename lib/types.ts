@@ -54,30 +54,32 @@ export type MatchedJob = Job & {
   reasoning: string;
 };
 
+// Kept intentionally lean: bounded output keeps a single generation well under
+// the route's timeout (see lib/ai/review.ts) and avoids retries.
 export const ResumeReviewSchema = z.object({
   overall_score: z.number().min(0).max(100),
-  summary: z.string().max(800),
-  strengths: z.array(z.string().max(300)).max(6),
-  weaknesses: z.array(z.string().max(300)).max(6),
+  summary: z.string().max(500),
+  strengths: z.array(z.string().max(220)).max(4),
+  weaknesses: z.array(z.string().max(220)).max(4),
   section_feedback: z
     .array(
       z.object({
         section: z.string().max(60),
-        assessment: z.string().max(400),
-        suggestions: z.array(z.string().max(300)).max(5),
+        assessment: z.string().max(280),
+        suggestions: z.array(z.string().max(180)).max(2),
       }),
     )
-    .max(8),
+    .max(3),
   revision_suggestions: z
     .array(
       z.object({
-        original: z.string().max(400),
-        revised: z.string().max(400),
-        rationale: z.string().max(300),
+        original: z.string().max(320),
+        revised: z.string().max(320),
+        rationale: z.string().max(220),
       }),
     )
-    .max(8),
-  recommendations: z.array(z.string().max(300)).max(8),
+    .max(3),
+  recommendations: z.array(z.string().max(220)).max(5),
 });
 
 export type ResumeReview = z.infer<typeof ResumeReviewSchema>;

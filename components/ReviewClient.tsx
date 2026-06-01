@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { PdfDropzone } from './PdfDropzone';
 import { ResumeReviewView } from './ResumeReviewView';
 import { RESUME_ERROR_COPY } from './resume-shared';
 import { formatLongDate } from '@/lib/date';
@@ -15,128 +14,98 @@ type ApiResponse =
 
 type State =
   | { kind: 'idle' }
-  | { kind: 'processing'; fileName: string }
-  | { kind: 'done'; review: ResumeReview; fileName: string }
+  | { kind: 'processing' }
+  | { kind: 'done'; review: ResumeReview }
   | { kind: 'error'; message: string };
 
 type Props = {
   initialReview: ResumeReview | null;
-  initialFilename: string | null;
   initialDate: string | null;
+  resumeFilename: string;
 };
 
-function ProcessingPanel({ fileName }: { fileName: string }) {
-  return (
-    <div className="border border-border px-6 py-10">
-      <div className="flex items-baseline justify-between">
-        <p className="font-display text-xl tracking-tight">Reviewing your resume…</p>
-        <p className="text-[0.8125rem] text-muted-foreground">{fileName}</p>
-      </div>
-      <p className="mt-3 max-w-prose text-[0.9375rem] text-muted-foreground">
-        Reading the document and assessing structure, wording, impact, and gaps. Usually 15–30 seconds.
-      </p>
-    </div>
-  );
-}
-
-export function ReviewClient({ initialReview, initialFilename, initialDate }: Props) {
+export function ReviewClient({ initialReview, initialDate, resumeFilename }: Props) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: 'idle' });
-  // No saved review yet → show the uploader immediately.
-  const [showUpload, setShowUpload] = useState(!initialReview);
 
-  const upload = useCallback(
-    async (file: File) => {
-      setState({ kind: 'processing', fileName: file.name });
-      try {
-        const form = new FormData();
-        form.append('resume', file);
-        const res = await fetch('/api/review', { method: 'POST', body: form });
-        const data = (await res.json()) as ApiResponse;
-        if (!res.ok || !data.ok) {
-          const code = !data.ok ? data.error : 'unknown';
-          setState({
-            kind: 'error',
-            message: RESUME_ERROR_COPY[code] ?? `Something went wrong (${code}). Please try again.`,
-          });
-          return;
-        }
-        setState({ kind: 'done', review: data.review, fileName: data.filename });
-        setShowUpload(false);
-        // Server page re-reads the persisted latest review on refresh.
-        router.refresh();
-      } catch (e) {
+  const run = useCallback(async () => {
+    setState({ kind: 'processing' });
+    try {
+      const res = await fetch('/api/review', { method: 'POST' });
+      const data = (await res.json()) as ApiResponse;
+      if (!res.ok || !data.ok) {
+        const code = !data.ok ? data.error : 'unknown';
         setState({
           kind: 'error',
-          message: e instanceof Error ? e.message : 'Network error. Try again.',
+          message: RESUME_ERROR_COPY[code] ?? `Something went wrong (${code}). Please try again.`,
         });
+        return;
       }
-    },
-    [router],
-  );
+      setState({ kind: 'done', review: data.review });
+      // Server page re-reads the persisted latest review on refresh.
+      router.refresh();
+    } catch (e) {
+      setState({
+        kind: 'error',
+        message: e instanceof Error ? e.message : 'Network error. Try again.',
+      });
+    }
+  }, [router]);
 
-  if (state.kind === 'processing') {
-    return <ProcessingPanel fileName={state.fileName} />;
-  }
-
-  // A fresh result takes precedence over the saved one.
+  const processing = state.kind === 'processing';
   const shownReview = state.kind === 'done' ? state.review : initialReview;
-  const shownFilename = state.kind === 'done' ? state.fileName : initialFilename;
-  const shownDateLabel =
-    state.kind === 'done' ? 'just now' : initialDate ? formatLongDate(initialDate) : null;
+  const hasReview = Boolean(shownReview);
+
+  const statusLine =
+    state.kind === 'done'
+      ? 'Reviewed just now'
+      : initialReview && initialDate
+        ? `Last reviewed ${formatLongDate(initialDate)}`
+        : 'Your active resume';
 
   return (
     <div className="space-y-10">
-      {showUpload ? (
-        <div className="space-y-4">
-          <PdfDropzone onFile={upload} idleLabel="Drop your resume PDF to review" />
-          {state.kind === 'error' && (
-            <div className="flex items-center justify-between gap-3 border border-[--color-destructive]/40 px-4 py-3">
-              <span className="text-[0.8125rem] text-[--color-destructive]" role="alert">
-                {state.message}
-              </span>
-              <button
-                type="button"
-                onClick={() => setState({ kind: 'idle' })}
-                className="text-[0.8125rem] text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
-          {initialReview && (
-            <button
-              type="button"
-              onClick={() => setShowUpload(false)}
-              className="text-[0.8125rem] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Cancel
-            </button>
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-y border-border py-5">
+        <div className="min-w-0">
+          <p className="truncate text-[0.9375rem] text-foreground">{resumeFilename}</p>
+          <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">{statusLine}</p>
         </div>
-      ) : (
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <p className="text-[0.8125rem] text-muted-foreground">
-            {shownFilename ? (
-              <>
-                Reviewed <span className="text-foreground">{shownFilename}</span>
-              </>
-            ) : (
-              'Latest review'
-            )}
-            {shownDateLabel ? ` · ${shownDateLabel}` : ''}
+        <button
+          type="button"
+          onClick={run}
+          disabled={processing}
+          className="inline-flex h-10 items-center border border-foreground bg-foreground px-5 text-[0.875rem] font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {processing ? 'Reviewing…' : hasReview ? 'Re-review my resume' : 'Review my resume'}
+        </button>
+      </div>
+
+      {processing && (
+        <div className="border border-border px-6 py-10">
+          <p className="font-display text-xl tracking-tight">Reviewing your resume…</p>
+          <p className="mt-3 max-w-prose text-[0.9375rem] text-muted-foreground">
+            Assessing your profile against what competitive startup roles look for. Usually 10–20
+            seconds.
           </p>
+        </div>
+      )}
+
+      {state.kind === 'error' && (
+        <div className="flex items-center justify-between gap-3 border border-[--color-destructive]/40 px-4 py-3">
+          <span className="text-[0.8125rem] text-[--color-destructive]" role="alert">
+            {state.message}
+          </span>
           <button
             type="button"
-            onClick={() => setShowUpload(true)}
-            className="inline-flex h-9 items-center border border-border bg-background px-4 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-foreground/[0.04]"
+            onClick={() => setState({ kind: 'idle' })}
+            className="text-[0.8125rem] text-muted-foreground transition-colors hover:text-foreground"
           >
-            Review a new version
+            Dismiss
           </button>
         </div>
       )}
 
-      {shownReview && <ResumeReviewView review={shownReview} />}
+      {!processing && shownReview && <ResumeReviewView review={shownReview} />}
     </div>
   );
 }
