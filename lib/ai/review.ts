@@ -59,7 +59,7 @@ export async function reviewResume(profile: Profile): Promise<ResumeReview> {
 
   const first = await client.messages.create({
     model: MODEL,
-    max_tokens: 3000,
+    max_tokens: 4096,
     system: SYSTEM_PROMPT,
     tools,
     tool_choice: { type: 'tool', name: REVIEW_TOOL_NAME },
@@ -67,39 +67,51 @@ export async function reviewResume(profile: Profile): Promise<ResumeReview> {
   });
 
   const firstBlock = findToolUse(first.content, REVIEW_TOOL_NAME);
-  if (firstBlock) {
-    const parsed = ResumeReviewSchema.safeParse(firstBlock.input);
-    if (parsed.success) return parsed.data;
-
-    // Retry once: replay the conversation with the validation error.
-    const second = await client.messages.create({
-      model: MODEL,
-      max_tokens: 3000,
-      system: SYSTEM_PROMPT,
-      tools,
-      tool_choice: { type: 'tool', name: REVIEW_TOOL_NAME },
-      messages: [
-        ...messages,
-        { role: 'assistant', content: first.content },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: firstBlock.id,
-              is_error: true,
-              content: `Your submission did not validate. Issues:\n${z.prettifyError(parsed.error)}\n\nPlease call ${REVIEW_TOOL_NAME} again with valid input.`,
-            },
-          ],
-        },
-      ],
-    });
-    const secondBlock = findToolUse(second.content, REVIEW_TOOL_NAME);
-    if (secondBlock) {
-      const reparsed = ResumeReviewSchema.safeParse(secondBlock.input);
-      if (reparsed.success) return reparsed.data;
-    }
+  if (!firstBlock) {
+    console.error(`review: no tool_use in first response (stop_reason=${first.stop_reason})`);
+    throw new Error('review_failed');
   }
 
+  const parsed = ResumeReviewSchema.safeParse(firstBlock.input);
+  if (parsed.success) return parsed.data;
+  console.warn(
+    `review: attempt 1 failed validation (stop_reason=${first.stop_reason}):\n${z.prettifyError(parsed.error)}`,
+  );
+
+  // Retry once: replay the conversation with the validation error.
+  const second = await client.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    system: SYSTEM_PROMPT,
+    tools,
+    tool_choice: { type: 'tool', name: REVIEW_TOOL_NAME },
+    messages: [
+      ...messages,
+      { role: 'assistant', content: first.content },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: firstBlock.id,
+            is_error: true,
+            content: `Your submission did not validate. Issues:\n${z.prettifyError(parsed.error)}\n\nPlease call ${REVIEW_TOOL_NAME} again with valid input.`,
+          },
+        ],
+      },
+    ],
+  });
+
+  const secondBlock = findToolUse(second.content, REVIEW_TOOL_NAME);
+  if (!secondBlock) {
+    console.error(`review: no tool_use in retry (stop_reason=${second.stop_reason})`);
+    throw new Error('review_failed');
+  }
+  const reparsed = ResumeReviewSchema.safeParse(secondBlock.input);
+  if (reparsed.success) return reparsed.data;
+
+  console.error(
+    `review: attempt 2 failed validation (stop_reason=${second.stop_reason}):\n${z.prettifyError(reparsed.error)}`,
+  );
   throw new Error('review_failed');
 }
