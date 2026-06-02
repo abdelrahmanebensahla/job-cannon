@@ -2,9 +2,9 @@
 
 **Live demo:** [jobcannon.app](https://jobcannon.app/)
 
-Drop a resume PDF and get a ranked list of best-fit startup jobs with reasoning for each match. **Free preview** is public — no account, no email gating. **Paid plan** ($8/mo or $60/yr, 7-day free trial) delivers the top 10 to your inbox every weekday at 8am ET, with a 30-day match history dashboard.
+Drop a resume PDF and get a ranked list of best-fit startup jobs with reasoning for each match. **Free preview** is public - no account, no email gating. **Paid plan** ($8/mo or $60/yr, 7-day free trial) delivers the top 10 to your inbox every weekday at 8am ET, with a 30-day match history dashboard.
 
-> Recruiters: skip the README — the live demo above takes 30 seconds to try.
+> Recruiters: skip the README - the live demo above takes 30 seconds to try.
 
 _(Screenshot will land here after the first production launch.)_
 
@@ -44,7 +44,7 @@ graph LR
 
 This is the design-choice section to flag for engineering interviewers.
 
-At MVP scale (~5K jobs) with a structured domain (tech jobs always list skills explicitly), **keyword pre-filtering has better precision than vector embeddings** and requires zero embedding infrastructure. Two Claude calls — one for extraction, one for ranking — cover the entire pipeline. No vector store, no second AI vendor, no embedding-drift gotchas.
+At MVP scale (~5K jobs) with a structured domain (tech jobs always list skills explicitly), **keyword pre-filtering has better precision than vector embeddings** and requires zero embedding infrastructure. Two Claude calls - one for extraction, one for ranking - cover the entire pipeline. No vector store, no second AI vendor, no embedding-drift gotchas.
 
 The full flow inside `POST /api/match`:
 
@@ -62,8 +62,8 @@ The full flow inside `POST /api/match`:
 1. Join `users + subscriptions(trialing|active) + resumes(isActive=true)` to get eligible subscribers.
 2. Load `data/jobs.json` once.
 3. For each subscriber, with concurrency 5:
-   - Idempotency check on `(userId, digestDate)` — skip if today's row exists.
-   - Pre-filter the 30 most-relevant candidates (smaller pool than MVP's 50 — per-user cost matters).
+   - Idempotency check on `(userId, digestDate)` - skip if today's row exists.
+   - Pre-filter the 30 most-relevant candidates (smaller pool than MVP's 50 - per-user cost matters).
    - Claude ranks the top 10 with reasoning.
    - Insert the `daily_digests` row.
    - Render a React Email template and ship via Resend; on success, stamp `sent_at`.
@@ -76,7 +76,7 @@ Idempotency is upsert-based on the unique `(user_id, digest_date)` index, so the
 | Plan        | Price | Trial          | What you get                                                  |
 | ----------- | ----- | -------------- | ------------------------------------------------------------- |
 | **Monthly** | $8/mo | 7-day free     | Daily top-10 email · 30-day history · resume re-upload · cancel anytime |
-| **Annual**  | $60/yr | 7-day free     | Same, save $36/yr — four months free                          |
+| **Annual**  | $60/yr | 7-day free     | Same, save $36/yr - four months free                          |
 
 Billing is Stripe-hosted (Checkout + Customer Portal); no card details ever touch our server. Cancellation lives in the Stripe portal, accessible from `/dashboard/billing`.
 
@@ -90,7 +90,7 @@ Billing is Stripe-hosted (Checkout + Customer Portal); no card details ever touc
 | Database    | Neon Postgres + Drizzle ORM                                                                  |
 | Payments    | Stripe (Checkout + Customer Portal + webhook)                                                |
 | Email       | Resend + React Email (server-rendered templates)                                             |
-| AI          | Anthropic Claude — `claude-sonnet-4-6`, native PDF document support, tool use for structured output |
+| AI          | Anthropic Claude - `claude-sonnet-4-6`, native PDF document support, tool use for structured output |
 | Validation  | Zod 4 (with `z.toJSONSchema` for tool input schemas)                                         |
 | Data store  | `data/jobs.json` committed to the repo, refreshed nightly                                    |
 | Scraping    | Native `fetch` against public JSON APIs (Greenhouse boards-api, Lever postings, RemoteOK)    |
@@ -168,7 +168,7 @@ Returns a `{ ok, processed, sent, errors, skipped, details[] }` summary includin
 | `CRON_SECRET`                         | SaaS            | `/api/cron/daily-digest`               | Bearer auth for Vercel Cron.                  |
 | `NEXT_PUBLIC_APP_URL`                 | SaaS (prod)     | Stripe redirects, email links          | Required in production with a custom domain (Vercel's auto-detect resolves to the `.vercel.app` URL). E.g. `https://jobcannon.app`. |
 
-The nightly GitHub Actions scrape needs **no secrets** — it only hits public JSON endpoints.
+The nightly GitHub Actions scrape needs **no secrets** - it only hits public JSON endpoints.
 
 ## Project layout
 
@@ -205,4 +205,4 @@ vercel.json                       Vercel Cron config (13:00 UTC Mon-Fri)
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT - see [LICENSE](./LICENSE).
