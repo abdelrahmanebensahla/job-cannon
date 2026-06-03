@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { ResumeReviewView } from './ResumeReviewView';
@@ -22,9 +23,10 @@ type Props = {
   initialReview: ResumeReview | null;
   initialDate: string | null;
   resumeFilename: string;
+  hasPdf: boolean;
 };
 
-export function ReviewClient({ initialReview, initialDate, resumeFilename }: Props) {
+export function ReviewClient({ initialReview, initialDate, resumeFilename, hasPdf }: Props) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: 'idle' });
 
@@ -51,6 +53,32 @@ export function ReviewClient({ initialReview, initialDate, resumeFilename }: Pro
       });
     }
   }, [router]);
+
+  // Resume predates PDF storage (file_data is null) — there's nothing to read,
+  // so prompt a re-upload instead of a button that would just error.
+  if (!hasPdf) {
+    return (
+      <div className="space-y-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-y border-border py-5">
+          <div className="min-w-0">
+            <p className="truncate text-[0.9375rem] text-foreground">{resumeFilename}</p>
+            <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">Review unavailable</p>
+          </div>
+          <Link
+            href="/dashboard/resume"
+            className="inline-flex h-10 items-center border border-foreground bg-foreground px-5 text-[0.875rem] font-medium text-background transition-colors hover:bg-foreground/90"
+          >
+            Re-upload to enable review →
+          </Link>
+        </div>
+        <p className="max-w-prose text-[0.9375rem] text-muted-foreground">
+          This resume was uploaded before full-PDF review existed, so there&apos;s no document to
+          read. Re-upload it on the Resume page to enable a detailed review.
+        </p>
+        {initialReview && <ResumeReviewView review={initialReview} />}
+      </div>
+    );
+  }
 
   const processing = state.kind === 'processing';
   const shownReview = state.kind === 'done' ? state.review : initialReview;
@@ -84,8 +112,8 @@ export function ReviewClient({ initialReview, initialDate, resumeFilename }: Pro
         <div className="border border-border px-6 py-10">
           <p className="font-display text-xl tracking-tight">Reviewing your resume…</p>
           <p className="mt-3 max-w-prose text-[0.9375rem] text-muted-foreground">
-            Assessing your profile against what competitive startup roles look for. Usually 10–20
-            seconds.
+            Reading your full resume PDF and assessing structure, wording, impact, and gaps. Usually
+            15–30 seconds.
           </p>
         </div>
       )}

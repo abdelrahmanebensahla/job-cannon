@@ -38,6 +38,10 @@ export const resumes = pgTable('resumes', {
     .references(() => users.id, { onDelete: 'cascade' }),
   filename: text('filename').notNull(),
   profile: jsonb('profile').$type<Profile>().notNull(),
+  // base64 of the uploaded PDF, kept so resume review can read the full
+  // document. Null for rows created before this column existed — those resumes
+  // must be re-uploaded to enable review (we never backfill).
+  fileData: text('file_data'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

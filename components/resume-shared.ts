@@ -22,4 +22,6 @@ export const RESUME_ERROR_COPY: Record<string, string> = {
   not_subscribed: 'Resume review is a subscriber feature. Start a plan to use it.',
   review_failed: "Claude couldn't generate a review just now. Please try again.",
   no_active_resume: 'No active resume found. Upload one on the Resume page first.',
+  pdf_unavailable:
+    'This resume was uploaded before full-PDF review existed. Re-upload it on the Resume page to enable review.',
 };

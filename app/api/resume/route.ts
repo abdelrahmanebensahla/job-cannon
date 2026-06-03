@@ -82,6 +82,9 @@ export async function POST(request: Request): Promise<NextResponse<ResumeRespons
         userId,
         filename: file.name || 'resume.pdf',
         profile,
+        // Keep the raw PDF (base64) so resume review can read the full
+        // document. Extraction above is unchanged.
+        fileData: base64Pdf,
         isActive: true,
       })
       .returning({ id: resumes.id });

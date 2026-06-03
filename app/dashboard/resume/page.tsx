@@ -1,26 +1,30 @@
 import { auth } from '@clerk/nextjs/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 
 import { ProfileSummary } from '@/components/ProfileSummary';
 import { ReplaceResumeClient } from '@/components/ReplaceResumeClient';
 import { db } from '@/db';
 import { resumes } from '@/db/schema';
 import { formatLongDate } from '@/lib/date';
-import type { Profile } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardResumePage() {
   const { userId } = await auth();
 
+  // Select only what the page renders — never pull the large base64 file_data
+  // blob; `hasPdf` is enough to know whether review is enabled.
   const [active] = await db
-    .select()
+    .select({
+      filename: resumes.filename,
+      profile: resumes.profile,
+      createdAt: resumes.createdAt,
+      hasPdf: sql<boolean>`${resumes.fileData} is not null`,
+    })
     .from(resumes)
     .where(and(eq(resumes.userId, userId!), eq(resumes.isActive, true)))
     .orderBy(desc(resumes.createdAt))
     .limit(1);
-
-  const profile = active!.profile as Profile;
 
   return (
     <div className="space-y-12">
@@ -40,7 +44,14 @@ export default async function DashboardResumePage() {
         </div>
       </div>
 
-      <ProfileSummary profile={profile} />
+      {!active!.hasPdf && (
+        <p className="max-w-prose text-[0.8125rem] text-muted-foreground">
+          Heads up: this resume was uploaded before full-PDF resume review existed. Replace it below
+          to enable a detailed resume review.
+        </p>
+      )}
+
+      <ProfileSummary profile={active!.profile} />
 
       <section className="border-t border-border pt-8">
         <h2 className="font-display text-xl tracking-tight">Replace</h2>

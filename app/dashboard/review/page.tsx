@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 
 import { ReviewClient } from '@/components/ReviewClient';
 import { db } from '@/db';
@@ -12,8 +12,12 @@ export default async function DashboardReviewPage() {
   const { userId } = await auth();
 
   const [[activeResume], [latest]] = await Promise.all([
+    // hasPdf only — never pull the (large) base64 file_data blob into the page.
     db
-      .select({ filename: resumes.filename })
+      .select({
+        filename: resumes.filename,
+        hasPdf: sql<boolean>`${resumes.fileData} is not null`,
+      })
       .from(resumes)
       .where(and(eq(resumes.userId, userId!), eq(resumes.isActive, true)))
       .orderBy(desc(resumes.createdAt))
@@ -31,9 +35,9 @@ export default async function DashboardReviewPage() {
       <header>
         <h1 className="font-display text-4xl tracking-tight">Resume review</h1>
         <p className="mt-2 max-w-prose text-[0.9375rem] text-muted-foreground">
-          An honest, specific critique of your active resume — strengths, gaps, and recommendations
-          to land more startup interviews. Based on the profile we extracted from your latest
-          upload, so it focuses on positioning, skills, and targeting (not formatting).
+          Claude reads your full uploaded resume PDF and gives an honest, specific critique —
+          line-level feedback on wording, structure, and gaps, plus before/after revisions and
+          recommendations to land more startup interviews.
         </p>
       </header>
 
@@ -41,6 +45,7 @@ export default async function DashboardReviewPage() {
         initialReview={latest?.review ?? null}
         initialDate={latest ? latest.createdAt.toISOString() : null}
         resumeFilename={activeResume?.filename ?? 'your resume'}
+        hasPdf={activeResume?.hasPdf ?? false}
       />
     </div>
   );

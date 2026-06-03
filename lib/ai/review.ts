@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type Anthropic from '@anthropic-ai/sdk';
 
 import { getClient, MODEL } from './client';
-import type { Profile, ResumeReview } from '../types';
+import type { ResumeReview } from '../types';
 import { ResumeReviewSchema } from '../types';
 
 const REVIEW_TOOL_NAME = 'submit_review';
@@ -13,25 +13,19 @@ const REVIEW_INPUT_SCHEMA = (() => {
   return schema as { type: 'object'; [k: string]: unknown };
 })();
 
-const SYSTEM_PROMPT = `You are an expert technical resume reviewer and career coach for software and startup roles. You give specific, honest, actionable, concise feedback — never generic platitudes. You only output structured feedback via the submit_review tool.`;
+const SYSTEM_PROMPT = `You are an expert technical resume reviewer and career coach for software and startup roles. You give specific, honest, actionable, concise feedback — never generic platitudes. You read the actual resume document and cite concrete lines. You only output structured feedback via the submit_review tool.`;
 
-function buildUserPrompt(profile: Profile): string {
-  return `Here is the structured profile we extracted from a candidate's resume:
-
-${JSON.stringify(profile, null, 2)}
-
-Review this candidate's resume for competitive startup software roles. Be concise and prioritize the highest-impact points (the schema caps how much you can return — spend it well).
+const REVIEW_PROMPT = `Review the attached resume PDF for competitive startup software roles. Read the actual document — wording, structure, quantification, and gaps. Be concise and prioritize the highest-impact points (the schema caps how much you can return — spend it well).
 
 Provide, via the submit_review tool:
 - overall_score: 0-100. 85+ = interview-ready for competitive startups; 70-84 = solid with clear gaps; below 70 = needs significant work.
 - summary: 1-2 sentences — your overall assessment.
-- strengths / weaknesses: the most important, specific to THIS profile.
-- section_feedback: per profile area (e.g. Summary, Skills, Target roles, Seniority/positioning) — a short assessment plus concrete suggestions.
-- revision_suggestions: concrete rewrites — especially a stronger "summary" and how to present target roles and skills. "original" quotes the current text (e.g. the summary verbatim); "revised" is your stronger version; "rationale" explains why.
-- recommendations: prioritized next steps — skills to add or emphasize, roles to target, and how to strengthen the resume.
+- strengths / weaknesses: the most important, specific to THIS resume (e.g. vague bullets, missing metrics, unclear impact, weak structure, thin skills).
+- section_feedback: per section present (e.g. Summary, Experience, Skills, Education, Projects) — a short assessment plus concrete suggestions.
+- revision_suggestions: concrete before/after rewrites. "original" quotes or closely paraphrases real text from the resume; "revised" is your stronger version (quantified, active, impact-focused); "rationale" explains why.
+- recommendations: prioritized next steps — skills to add or emphasize, roles to target, and how to strengthen the resume for startup applications.
 
-Note: you only have the structured profile (skills, target roles, seniority, summary, locations), not the raw resume text — so focus on positioning, skills coverage, seniority fit, and targeting rather than formatting or specific bullet wording. Call submit_review exactly once.`;
-}
+Call the submit_review tool exactly once. Do not include any other text.`;
 
 function findToolUse(
   blocks: Anthropic.ContentBlock[],
@@ -42,7 +36,26 @@ function findToolUse(
   );
 }
 
-export async function reviewResume(profile: Profile): Promise<ResumeReview> {
+function buildInitialMessages(base64Pdf: string): Anthropic.MessageParam[] {
+  return [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: base64Pdf,
+          },
+        },
+        { type: 'text', text: REVIEW_PROMPT },
+      ],
+    },
+  ];
+}
+
+export async function reviewResume(base64Pdf: string): Promise<ResumeReview> {
   const client = getClient();
 
   const tools: Anthropic.Tool[] = [
@@ -53,9 +66,7 @@ export async function reviewResume(profile: Profile): Promise<ResumeReview> {
     },
   ];
 
-  const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: buildUserPrompt(profile) },
-  ];
+  const messages = buildInitialMessages(base64Pdf);
 
   const first = await client.messages.create({
     model: MODEL,

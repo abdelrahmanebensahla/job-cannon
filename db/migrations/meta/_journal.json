@@ -15,6 +15,13 @@
       "when": 1780285493774,
       "tag": "0001_careful_pandemic",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780445912848,
+      "tag": "0002_minor_dazzler",
+      "breakpoints": true
     }
   ]
 }
