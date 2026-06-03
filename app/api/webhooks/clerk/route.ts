@@ -87,7 +87,10 @@ export async function POST(request: Request): Promise<NextResponse<WebhookRespon
           await db
             .insert(users)
             .values({ id: data.id, email })
-            .onConflictDoNothing({ target: users.id });
+            // Upsert (not insert): a re-delivered user.created is idempotent and
+            // also keeps email in sync. An email-unique collision with a
+            // DIFFERENT row still throws 23505 and is handled below.
+            .onConflictDoUpdate({ target: users.id, set: { email } });
         } catch (e) {
           if (e instanceof Error && /duplicate key|23505|unique/i.test(e.message)) {
             console.warn(

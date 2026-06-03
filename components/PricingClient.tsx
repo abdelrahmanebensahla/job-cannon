@@ -19,6 +19,7 @@ const ERROR_COPY: Record<string, string> = {
   email_conflict: 'An older account is already using this email. Please contact support to reconcile.',
   no_session_url: 'Stripe did not return a checkout URL.',
   stripe_checkout_failed: 'Stripe rejected the request. Please retry.',
+  already_subscribed: "You're already subscribed — opening your billing portal.",
 };
 
 export function CheckoutButton({ priceKey, label }: Props) {
@@ -44,6 +45,19 @@ export function CheckoutButton({ priceKey, label }: Props) {
       const data = (await res.json()) as CheckoutResponse;
       if (!res.ok || !data.ok) {
         const code = !data.ok ? data.error : 'unknown';
+        // Already on a plan → send them to the Stripe Customer Portal instead.
+        if (code === 'already_subscribed') {
+          try {
+            const portalRes = await fetch('/api/portal', { method: 'POST' });
+            const portalData = (await portalRes.json()) as { ok: boolean; url?: string };
+            if (portalRes.ok && portalData.ok && portalData.url) {
+              window.location.href = portalData.url;
+              return;
+            }
+          } catch {
+            // fall through to the message below
+          }
+        }
         setError(ERROR_COPY[code] ?? `Something went wrong (${code}). Please try again.`);
         return;
       }

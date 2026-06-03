@@ -1,10 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-// Authed routes: any /dashboard/* and /onboarding require a signed-in user.
+// Authed routes: /dashboard/*, /onboarding, and /dev/* require a signed-in user.
 // The /dashboard/* subscription check happens in the dashboard layout
-// (kept out of middleware to avoid a Neon DB hit on every nav).
-const isAuthed = createRouteMatcher(['/dashboard(.*)', '/onboarding(.*)']);
+// (kept out of middleware to avoid a Neon DB hit on every nav). /dev/* is an
+// internal component gallery — gate it so it isn't publicly reachable in prod.
+const isAuthed = createRouteMatcher(['/dashboard(.*)', '/onboarding(.*)', '/dev(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isAuthed(req)) return;
