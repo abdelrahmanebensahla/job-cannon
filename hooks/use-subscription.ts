@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
-import type { SubscriptionView } from '@/lib/subscription';
+import type { SubscriptionView } from '@/lib/subscription-view';
 
 /**
  * Subscription state context. Hydrated server-side by <SubscriptionProvider />

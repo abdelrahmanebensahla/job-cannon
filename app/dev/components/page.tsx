@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { SubscriptionBadge } from '@/components/SubscriptionBadge';
 import { SubscriptionProvider } from '@/components/SubscriptionProvider';
 import { SubscriptionStatusBlock } from '@/components/SubscriptionStatusBlock';
-import type { SubscriptionView } from '@/lib/subscription';
+import type { SubscriptionView } from '@/lib/subscription-view';
 
 export const dynamic = 'force-dynamic';
 

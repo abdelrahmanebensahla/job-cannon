@@ -119,8 +119,8 @@ export function ReviewClient({ initialReview, initialDate, resumeFilename, hasPd
       )}
 
       {state.kind === 'error' && (
-        <div className="flex items-center justify-between gap-3 border border-[--color-destructive]/40 px-4 py-3">
-          <span className="text-[0.8125rem] text-[--color-destructive]" role="alert">
+        <div className="flex items-center justify-between gap-3 border border-destructive/40 px-4 py-3">
+          <span className="text-[0.8125rem] text-destructive" role="alert">
             {state.message}
           </span>
           <button

@@ -1,6 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-export const MODEL = 'claude-sonnet-4-6';
+// Claude Sonnet 5. Swapped from claude-sonnet-4-6 on 2026-08-27: same 1M
+// context, newer model, and cheaper on both sides ($2/$10 per MTok vs
+// $3/$15). Pinned in one place on purpose — every call site reads this.
+export const MODEL = 'claude-sonnet-5';
 
 let client: Anthropic | null = null;
 

@@ -8,7 +8,7 @@ import { SubscriptionBadge } from '@/components/SubscriptionBadge';
 import { db } from '@/db';
 import { dailyDigests } from '@/db/schema';
 import { formatLongDate, todayInET } from '@/lib/date';
-import { loadJobs } from '@/lib/jobs';
+import { loadJobsMeta } from '@/lib/jobs';
 import type { MatchedJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -29,17 +29,13 @@ export default async function DashboardTodayPage(props: { searchParams: SearchPa
   const digest = rows[0];
   const { welcome } = await props.searchParams;
 
-  // Total scrape pool size is shown in the stats strip — read it lazily so
-  // a missing jobs.json never blocks the page.
-  let totalJobs = 0;
-  if (digest) {
-    try {
-      const all = await loadJobs();
-      totalJobs = all.length;
-    } catch {
-      totalJobs = 0;
-    }
-  }
+  // Corpus size for the stats strip. Reads the ~100-byte sidecar, not the
+  // ~44 MB corpus — this page only ever needed the number, and loading the
+  // whole file for it cost a multi-hundred-ms parse on every cold start.
+  // `loadJobsMeta` returns null rather than throwing, so a missing sidecar
+  // just drops the clause.
+  const meta = digest ? await loadJobsMeta() : null;
+  const totalJobs = meta?.count ?? 0;
 
   return (
     <div className="space-y-12">

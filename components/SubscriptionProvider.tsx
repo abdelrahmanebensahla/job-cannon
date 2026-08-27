@@ -1,7 +1,7 @@
 'use client';
 
 import { SubscriptionContext } from '@/hooks/use-subscription';
-import type { SubscriptionView } from '@/lib/subscription';
+import type { SubscriptionView } from '@/lib/subscription-view';
 
 export function SubscriptionProvider({
   value,

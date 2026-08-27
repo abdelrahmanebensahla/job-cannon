@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { PortalButton } from '@/components/PortalButton';
 import { SubscriptionStatusBlock } from '@/components/SubscriptionStatusBlock';
 import { getCurrentSubscription } from '@/lib/stripe/subscription';
-import { getSubscriptionView } from '@/lib/subscription';
+import { toView } from '@/lib/subscription';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +21,12 @@ function planPrice(priceId: string | null | undefined): string {
 
 export default async function DashboardBillingPage() {
   const { userId } = await auth();
+  // One read, then derive. `getSubscriptionView()` would issue a second,
+  // identical query for a row we're already holding — `toView` is exported as
+  // a pure mapper for exactly this case. The layout guarantees an active
+  // subscription exists before this page renders.
   const sub = (await getCurrentSubscription(userId!))!;
-  const view = await getSubscriptionView();
+  const view = toView(sub);
 
   return (
     <div className="space-y-12">

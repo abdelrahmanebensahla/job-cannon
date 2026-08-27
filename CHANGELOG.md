@@ -592,3 +592,96 @@ Two-goal pass: (1) single source of truth on subscription state visible across e
 - Replace placeholder text in `screenshots/README.md` with real PNGs when captured.
 - Wire the README `_(Screenshot will land here...)_` placeholder to the captured filenames.
 - Reactivate the test trial sub if dogfooding the live dashboard is needed (one MCP call: `cancel_subscription`'s inverse — `create_subscription` with the live monthly price + 7-day trial on `cus_UaKrK9Y8huu6le`).
+
+---
+
+## Tooling — pnpm → npm (2026-08-27)
+
+Package manager switched from pnpm to npm at the user's request.
+
+**Changed:**
+- Deleted `pnpm-lock.yaml` and `pnpm-workspace.yaml`. The workspace file declared no `packages:` — it only carried a half-written `allowBuilds` block (values were literally the placeholder string `set this to true or false`) plus `ignoredBuiltDependencies: [sharp, unrs-resolver]`, so nothing depended on it.
+- `npm install` from a clean `node_modules` → `package-lock.json` (lockfileVersion 3, 826 packages). npm runs dependency install scripts by default, so the `sharp` / `esbuild` / `@clerk/shared` / `unrs-resolver` build steps that pnpm 10+ blocks now just run.
+- `.github/workflows/scrape.yml`: dropped `pnpm/action-setup`, switched `setup-node` cache to `npm`, `pnpm install --frozen-lockfile` → `npm ci`, `pnpm scrape` → `npm run scrape`.
+- `README.md`, `CLAUDE.md`, `screenshots/README.md`: every `pnpm <script>` → `npm run <script>`; tech-stack table and CLAUDE.md's package-manager line now say npm.
+
+**Verified:** `npm run lint` clean, `npm run build` clean (22 routes, TypeScript passed).
+
+**Deliberately not changed:** historical `pnpm` references inside earlier CHANGELOG entries. Those describe state at specific past dates and were accurate then — same precedent as the `job-cannon.vercel.app` scrub in Phase 6.
+
+---
+
+## Audit remediation — 2026-08-27
+
+A full read of the codebase produced a 10-finding audit; this entry records fixing all of it. Verification for every item below: `npm run lint`, `npm test` (51 tests), `npm run build` — all clean — plus `npm audit` at zero.
+
+### Privacy: the policy now matches the behaviour
+
+`/privacy` claimed *"The PDF itself is not retained"*. That had been false since the resume-review feature shipped on 2026-05-31 — `app/api/resume/route.ts` stores the base64 PDF in `resumes.file_data`, and nothing ever deleted it. The "match history kept for 30 days" claim was also aspirational: the history page *filtered* to 30 days; no code deleted a row.
+
+Both are now true rather than reworded:
+
+- Superseding a resume clears the old `file_data` in the same statement that deactivates it, so only the current resume's PDF exists.
+- `pruneExpiredDigests()` ([lib/retention.ts](lib/retention.ts)) runs at the end of every cron, deleting digests past `DIGEST_RETENTION_DAYS` (30). `/dashboard/history` now filters on the *same* `daysAgoInET` cutoff, so the window shown and the window kept cannot drift apart.
+- The policy was rewritten to describe what actually happens, including the free preview storing nothing and the rate limiter counting a hashed IP. CLAUDE.md's contradicting "never stored" line was corrected and a retention section added.
+
+**Note for the next production cron run:** its first execution will delete `daily_digests` rows older than 30 days. That is the stated policy being enforced for the first time, and the history UI could never display those rows.
+
+### The free preview is no longer unmetered
+
+`/api/match` takes no auth by design, but it had no rate limit, no cap, and no rate-limiting dependency anywhere. Measured: the 50-candidate ranking prompt was ~53K input tokens, so roughly $0.18–0.22 per anonymous request. About 40 scripted calls burned a subscriber-month of revenue.
+
+New `rate_limits` table (migration `0003`) plus [lib/rate-limit.ts](lib/rate-limit.ts): per-IP and global daily counters incremented in a single upsert (Neon HTTP has no multi-statement transactions), returning 429 with `retry-after`. The window is encoded in the key, so there is no reset path to get wrong. **IP addresses are never stored** — the key holds a salted SHA-256. Fails open by design.
+
+### Cost: ~77% off per ranking call
+
+- `MODEL` is now `claude-sonnet-5`: newer than `claude-sonnet-4-6` and cheaper on both sides ($2/$10 vs $3/$15 per MTok), same 1M context.
+- `rankJobs` truncates each description to 1,200 chars in the prompt — **66% smaller** (53.5K → 18.3K input tokens at 50 candidates).
+- The pre-filter deliberately still matches on the **full** description. Measured: truncating the stored text to 2,000 chars loses ~47% of skill matches, because skills are not front-loaded. Truncating the prompt is safe precisely because those candidates already matched.
+
+Net: a free match went from ~$0.160 to ~$0.037 of input cost.
+
+### Job boards: 18/45 live → 62/62
+
+27 of 45 configured slugs returned nothing, and the corpus was 51% four large companies. Every dead slug was probed across Greenhouse, Lever and Ashby:
+
+- **New Ashby scraper** ([lib/scrapers/ashby.ts](lib/scrapers/ashby.ts), 27 boards). Most of the missing startups had migrated there — OpenAI, Notion, Supabase, Linear, Ramp, Plaid, Zapier, Snowflake, Perplexity — alongside Cursor, Harvey, ElevenLabs, Sierra, Replit and Modal. Its API also gives `descriptionPlain` (no stripping needed) and a real `publishedAt`.
+- **Greenhouse rebuilt to 34 live slugs:** fixed renames (`doordash`→`doordashusa`, `glean`→`gleanwork`), recovered companies that left Lever (Airtable, Coursera, Klaviyo, Mixpanel, Pendo, Attentive, Twitch), and added infra/dev-tools coverage (Cloudflare, Grafana, Fivetran, Tailscale, Chainguard, Hex, PlanetScale, Together AI).
+- **Lever cut to its one surviving board** (Palantir). 14 of 15 were dead.
+- `ashby:neon` was checked and turned out to be a **games-payments company**, not Neon the Postgres database — dropped rather than mislabel jobs, with a note in the file so it isn't re-added.
+
+Result: **10,615 jobs across 345 companies** (was 5,423 across ~60). Top-4 concentration fell from 51% to 28%.
+
+**Rot is now visible.** `assertHealthy` in the scrape enforces per-source floors, a 50% shrink guard and a `MAX_TOTAL_JOBS` ceiling, exiting non-zero *before* writing anything. Every scraper swallows per-board failures by design, which is exactly why coverage could decay while the nightly job stayed green.
+
+### Correctness fixes
+
+- **Every error message in the app rendered unstyled.** Nine components used `text-[--color-destructive]` — Tailwind v3 shorthand that v4 compiles to `color: --color-destructive`, invalid CSS the browser drops. Verified in the compiled stylesheet before and after; it now emits `.text-destructive{color:var(--destructive)}`. This also means the previously logged dark-mode contrast fix (`#DC2626`→`#F87171`) had never actually been applying.
+- **A failed digest email is now retried.** Idempotency was keyed on the row *existing*, so a single Resend failure made every later run skip that user and they lost the day permanently. It now keys on `sentAt IS NOT NULL` and re-sends from the stored jobs without re-ranking (new `resent` status).
+- **Digests no longer repeat.** `recentlySentJobIds` unnests the last 14 days of digests in Postgres (`jsonb_array_elements`, so only ids cross the wire) and passes them to `preFilter` as an exclusion set. Fails open — a repetitive digest beats no digest.
+- **`preFilter` sorts by parsed instant, not string.** Greenhouse and Ashby emit UTC offsets, Lever and RemoteOK emit `Z`; a lexical sort interleaves them wrong. Latent rather than live — the top 50 was identical either way when measured — but now correct and pinned by a test.
+- **Thin skill matches are padded, not discarded.** The old `< 10 matches → use the 50 newest overall` branch threw away the genuine hits it had just found.
+- **`stripHtml` strips again after the second entity decode.** Double-escaped markup previously survived as literal `<p>` text in the ranking prompt. Only 1 of 10,615 descriptions was affected, so this is robustness rather than a live bug.
+- **The cron no longer logs subscriber emails.** `details[]` and the error paths carry `userId` instead. The bearer check uses `timingSafeEqual`.
+- **`/dashboard/billing` reads the subscription once** and derives the view with `toView(sub)`, instead of issuing two more queries for a row it already held.
+- **`/dashboard` reads a sidecar, not the corpus.** It was loading and parsing 44 MB to render one number; `data/jobs-meta.json` is about 100 bytes.
+
+### Dependencies
+
+- `next` 16.2.6 → 16.3.3, clearing all three high advisories — including the App Router middleware bypass, which mattered because `proxy.ts` is the edge auth gate (though the dashboard layout and every API route re-check auth server-side).
+- `@anthropic-ai/sdk` 0.98.1 → 0.121.0. Type-checks clean; the forced-tool-call and base64 PDF document-block patterns are unchanged.
+- Added `overrides: { "esbuild": "^0.25.0" }` to clear the four remaining moderate advisories under `drizzle-kit`'s abandoned `@esbuild-kit/*` chain. npm's own suggested fix was a downgrade to `drizzle-kit@0.18.1`, which would break the migration workflow; `drizzle-kit@0.31.10` is already `latest`. `npm run db:generate` was verified working through the override. **`npm audit` now reports zero.**
+
+### Testing, CI, and housekeeping
+
+- **First test suite**, on Node's built-in runner via tsx — no new dependency. 51 tests over `hasActiveSubscription`, `toView`, `preFilter`, the date helpers, `stripHtml`, `firstNameFromEmail`, and the rate limiter's IP handling.
+- `lib/subscription-view.ts` splits the pure view mapper out of the `server-only` module so tests can import it.
+- **New `.github/workflows/ci.yml`** — lint, test and build on every push and PR. There was no CI at all before.
+- Added `app/robots.ts`, `app/sitemap.ts`, `app/opengraph-image.tsx`, and OG/Twitter metadata with `metadataBase`. Deleted the five untouched Next.js scaffold SVGs from `public/`.
+- Landing and processing copy updated from "~5K" to the real corpus size, and the source list now names Ashby.
+
+### Deliberately not changed
+
+- **`@react-email/components@1.0.12` is deprecated with no successor published** — 1.0.12 *is* `latest`. Replacing it means hand-rolling the digest email's HTML, and email rendering cannot be verified from here without sending real mail. Trading a working, visually reviewed template for an unverifiable rewrite is the wrong trade; flagged for a session that can send test mail.
+- **Static rendering for `/privacy` and `/terms`.** The audit blamed the root layout's `getSubscriptionView()`. Tested by stubbing that call out: the routes stay dynamic regardless, because `<ClerkProvider>` reads headers. The restructure would have bought nothing, so the attribution was simply wrong.
+- **The 44 MB corpus.** Doubling coverage doubled the file. Age-based trimming barely helps (Greenhouse reports `updated_at`, so nearly everything looks fresh) and truncating stored descriptions costs real match quality. Kept whole, with the ceiling check added so future growth cannot stay silent.

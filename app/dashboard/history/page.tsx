@@ -4,20 +4,16 @@ import { and, desc, eq, gte } from 'drizzle-orm';
 import { JobCard } from '@/components/JobCard';
 import { db } from '@/db';
 import { dailyDigests } from '@/db/schema';
-import { formatShortDate } from '@/lib/date';
+import { DIGEST_RETENTION_DAYS, daysAgoInET, formatShortDate } from '@/lib/date';
 import type { MatchedJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-function dateNDaysAgoIsoDate(days: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
 export default async function DashboardHistoryPage() {
   const { userId } = await auth();
-  const cutoff = dateNDaysAgoIsoDate(30);
+  // Same ET day boundary the retention prune uses, so the window the user is
+  // shown and the window we actually keep can never disagree by a day.
+  const cutoff = daysAgoInET(DIGEST_RETENTION_DAYS);
 
   const rows = await db
     .select({
@@ -34,7 +30,7 @@ export default async function DashboardHistoryPage() {
       <header>
         <h1 className="font-display text-4xl tracking-tight">History</h1>
         <p className="mt-2 text-[0.9375rem] text-muted-foreground">
-          Past 30 days. Each digest expands to the full 10 matches.
+          Past {DIGEST_RETENTION_DAYS} days. Each digest expands to the full 10 matches.
         </p>
       </header>
 

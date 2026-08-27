@@ -23,7 +23,7 @@ export function SubscriptionBadge({ className }: { className?: string }) {
   if (sub.state === 'past_due') {
     return (
       <span
-        className={cn(base, 'border-[--color-destructive] text-[--color-destructive]', className)}
+        className={cn(base, 'border-destructive text-destructive', className)}
       >
         Past due
       </span>

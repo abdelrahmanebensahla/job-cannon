@@ -48,3 +48,15 @@ export function formatLongDate(input: string | Date): string {
     timeZone: 'America/New_York',
   }).format(toDate(input));
 }
+
+/**
+ * The ET date N days before today, as YYYY-MM-DD. Used for retention cutoffs
+ * and history windows — both must agree, and both are anchored to the same
+ * America/New_York "day" the digest itself is keyed by (see todayInET).
+ */
+export function daysAgoInET(days: number, now: Date = new Date()): string {
+  return todayInET(new Date(now.getTime() - days * 86_400_000));
+}
+
+/** How long a generated digest is retained. Mirrored in the privacy policy. */
+export const DIGEST_RETENTION_DAYS = 30;

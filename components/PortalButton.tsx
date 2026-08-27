@@ -38,7 +38,7 @@ export function PortalButton() {
         {loading ? 'Opening portal…' : 'Manage in Stripe ↗'}
       </button>
       {error && (
-        <p className="text-[0.8125rem] text-[--color-destructive]" role="alert">
+        <p className="text-[0.8125rem] text-destructive" role="alert">
           {error}
         </p>
       )}

@@ -13,6 +13,26 @@ const RANK_INPUT_SCHEMA = (() => {
   return schema as { type: 'object'; [k: string]: unknown };
 })();
 
+/**
+ * How much of each job description Claude sees when ranking.
+ *
+ * The keyword pre-filter in lib/jobs.ts already ran against the FULL stored
+ * description — measured, skills are spread throughout, so truncating there
+ * would cost ~47% of matches. Ranking is a different job: Claude is judging
+ * fit among candidates that already matched, and the opening of a posting
+ * carries the role, team and requirements. The tail is benefits and EEO
+ * boilerplate.
+ *
+ * At 50 candidates this is the single largest cost in the product — the
+ * uncapped prompt measured ~53K input tokens per call.
+ */
+const RANK_DESCRIPTION_CHARS = 1200;
+
+function forPrompt(description: string): string {
+  if (description.length <= RANK_DESCRIPTION_CHARS) return description;
+  return description.slice(0, RANK_DESCRIPTION_CHARS) + '…';
+}
+
 const SYSTEM_PROMPT = `You are a careful technical recruiter. Given a candidate profile and a set of candidate jobs, you rank the jobs that fit the candidate best. You weigh skill overlap, seniority match, target roles, location/remote fit, and recency. You only output structured rankings via the submit_rankings tool.`;
 
 function buildUserPrompt(profile: Profile, candidates: Job[]): string {
@@ -25,7 +45,7 @@ function buildUserPrompt(profile: Profile, candidates: Job[]): string {
       location: j.location,
       remote: j.remote,
       posted_at: j.posted_at,
-      description: j.description,
+      description: forPrompt(j.description),
     })),
     null,
     2,

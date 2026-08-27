@@ -76,7 +76,7 @@ export function ReplaceResumeClient() {
     <div className="space-y-4">
       <PdfDropzone onFile={upload} idleLabel="Drop your new resume PDF here" />
       {state.kind === 'error' && (
-        <p className="text-[0.8125rem] text-[--color-destructive]" role="alert">
+        <p className="text-[0.8125rem] text-destructive" role="alert">
           {state.message}
         </p>
       )}

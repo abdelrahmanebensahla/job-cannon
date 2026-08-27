@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { extractProfile } from '@/lib/ai/extract';
 import { rankJobs } from '@/lib/ai/rank';
 import { loadJobs, preFilter } from '@/lib/jobs';
+import { consumeMatchQuota } from '@/lib/rate-limit';
 import type { MatchedJob, Profile } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -16,6 +17,24 @@ type MatchResponse =
 
 function fail(error: string, status = 400): NextResponse<MatchResponse> {
   return NextResponse.json({ ok: false, error }, { status });
+}
+
+// A rejected caller should be told when to come back, not just refused.
+function rateLimited(error: string): NextResponse<MatchResponse> {
+  const res: NextResponse<MatchResponse> = NextResponse.json(
+    { ok: false, error },
+    { status: 429 },
+  );
+  res.headers.set('retry-after', String(secondsUntilNextEtMidnight()));
+  return res;
+}
+
+function secondsUntilNextEtMidnight(now: Date = new Date()): number {
+  // Windows roll at ET midnight; 24h is the safe upper bound and the exact
+  // figure only matters as a hint, so approximate rather than pull in a tz lib.
+  const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const secondsIntoDay = etNow.getHours() * 3600 + etNow.getMinutes() * 60 + etNow.getSeconds();
+  return Math.max(60, 86_400 - secondsIntoDay);
 }
 
 export async function POST(request: Request): Promise<NextResponse<MatchResponse>> {
@@ -37,6 +56,15 @@ export async function POST(request: Request): Promise<NextResponse<MatchResponse
     return fail('not_a_pdf');
   }
   const base64Pdf = bytes.toString('base64');
+
+  // Spend guard. Deliberately after validation (a malformed upload costs us
+  // nothing, so it shouldn't cost the visitor a preview) and before the first
+  // Claude call (which is the only expensive thing here). This is the one
+  // place the otherwise DB-free preview path touches Postgres.
+  const quota = await consumeMatchQuota(request.headers);
+  if (!quota.allowed) {
+    return rateLimited(quota.reason === 'global' ? 'daily_capacity_reached' : 'rate_limited');
+  }
 
   let profile: Profile;
   try {

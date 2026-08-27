@@ -26,7 +26,7 @@ Capture from your own browser when you're back to having an active sub on `jobca
 These can be captured anytime even without an active sub:
 
 - `sign-in.png` — `/sign-in` rendered from `jobcannon.app` (Clerk's production widget only loads on that origin — won't render from `*.vercel.app`).
-- `dev-components.png` (optional, design-system flex) — `/dev/components` rendered locally via `pnpm dev`. Shows every subscription-state variant of the badge + status block on one page.
+- `dev-components.png` (optional, design-system flex) — `/dev/components` rendered locally via `npm run dev`. Shows every subscription-state variant of the badge + status block on one page.
 
 ## Acceptance bar
 

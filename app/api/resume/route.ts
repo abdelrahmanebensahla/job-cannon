@@ -70,10 +70,16 @@ export async function POST(request: Request): Promise<NextResponse<ResumeRespons
   // support multi-statement transactions, so we accept the brief window
   // where two rows are active. The /onboarding flow is single-user and
   // resumes are referenced via isActive=true filters everywhere.
+  //
+  // Superseding also clears `fileData`: we keep a stored PDF only for the
+  // resume currently driving digests and review, never a history of every
+  // document a user has uploaded. The privacy policy states this, so it has
+  // to actually happen here. Extraction above already succeeded, so the old
+  // PDF is genuinely no longer needed.
   try {
     await db
       .update(resumes)
-      .set({ isActive: false })
+      .set({ isActive: false, fileData: null })
       .where(and(eq(resumes.userId, userId), eq(resumes.isActive, true)));
 
     const [inserted] = await db

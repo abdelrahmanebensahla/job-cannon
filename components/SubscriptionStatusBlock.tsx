@@ -1,5 +1,5 @@
 import { formatLongDate } from '@/lib/date';
-import type { SubscriptionView } from '@/lib/subscription';
+import type { SubscriptionView } from '@/lib/subscription-view';
 
 const MONTHLY_PRICE = '$8/month';
 const YEARLY_PRICE = '$60/year';
@@ -43,7 +43,7 @@ export function SubscriptionStatusBlock({ view }: { view: SubscriptionView }) {
 
   if (view.state === 'past_due') {
     return (
-      <p className="text-[0.8125rem] text-[--color-destructive]">
+      <p className="text-[0.8125rem] text-destructive">
         Payment failed · update your card to continue receiving digests.
       </p>
     );

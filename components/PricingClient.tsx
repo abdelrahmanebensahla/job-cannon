@@ -80,7 +80,7 @@ export function CheckoutButton({ priceKey, label }: Props) {
         {loading ? 'Redirecting to Stripe…' : label}
       </button>
       {error && (
-        <p className="text-[0.8125rem] text-[--color-destructive]" role="alert">
+        <p className="text-[0.8125rem] text-destructive" role="alert">
           {error}
         </p>
       )}

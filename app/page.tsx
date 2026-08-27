@@ -25,7 +25,7 @@ const STEPS: Step[] = [
   },
   {
     num: '02',
-    title: 'We rank ~5K startup roles',
+    title: 'We rank 10K+ startup roles',
     body:
       'Keyword pre-filter on your top skills, then Claude scores the best 20 with a one-paragraph reason for each.',
   },
@@ -176,7 +176,7 @@ export default async function Home() {
           in your inbox every weekday morning.
         </p>
         <p className="mt-4 text-[0.8125rem] text-muted-foreground">
-          Powered by Claude · Greenhouse + Lever + RemoteOK · No account needed for the free preview.
+          Powered by Claude · Greenhouse + Ashby + Lever + RemoteOK · No account needed for the free preview.
         </p>
       </header>
 

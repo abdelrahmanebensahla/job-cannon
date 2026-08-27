@@ -70,7 +70,7 @@ export function PdfDropzone({
         </p>
       </div>
       {localError && (
-        <p className="mt-3 text-[0.8125rem] text-[--color-destructive]" role="alert">
+        <p className="mt-3 text-[0.8125rem] text-destructive" role="alert">
           {localError}
         </p>
       )}

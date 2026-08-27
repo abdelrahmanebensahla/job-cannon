@@ -33,7 +33,7 @@ graph LR
     J -.reads.-> N
   end
 
-  P[GitHub Actions nightly] --> Q[Scrape Greenhouse + Lever + RemoteOK]
+  P[GitHub Actions nightly] --> Q[Scrape Greenhouse + Ashby + Lever + RemoteOK]
   Q --> R[Commit data/jobs.json]
   R --> S[Vercel auto-redeploys]
   D -.same source.-> R
@@ -44,7 +44,9 @@ graph LR
 
 This is the design-choice section to flag for engineering interviewers.
 
-At MVP scale (~5K jobs) with a structured domain (tech jobs always list skills explicitly), **keyword pre-filtering has better precision than vector embeddings** and requires zero embedding infrastructure. Two Claude calls - one for extraction, one for ranking - cover the entire pipeline. No vector store, no second AI vendor, no embedding-drift gotchas.
+At this scale (~10K jobs across 345 companies) with a structured domain (tech jobs always list skills explicitly), **keyword pre-filtering has better precision than vector embeddings** and requires zero embedding infrastructure. Two Claude calls - one for extraction, one for ranking - cover the entire pipeline. No vector store, no second AI vendor, no embedding-drift gotchas.
+
+The pre-filter runs against the **full** stored description, because skills turn out not to be front-loaded - truncating job text to 2,000 characters costs ~47% of skill matches (measured). The ranking prompt truncates to 1,200 characters instead, since by then the candidates have already matched and Claude only needs enough to judge fit. That split is where most of the per-call cost went.
 
 The full flow inside `POST /api/match`:
 
@@ -90,43 +92,56 @@ Billing is Stripe-hosted (Checkout + Customer Portal); no card details ever touc
 | Database    | Neon Postgres + Drizzle ORM                                                                  |
 | Payments    | Stripe (Checkout + Customer Portal + webhook)                                                |
 | Email       | Resend + React Email (server-rendered templates)                                             |
-| AI          | Anthropic Claude - `claude-sonnet-4-6`, native PDF document support, tool use for structured output |
+| AI          | Anthropic Claude - `claude-sonnet-5`, native PDF document support, tool use for structured output |
 | Validation  | Zod 4 (with `z.toJSONSchema` for tool input schemas)                                         |
-| Data store  | `data/jobs.json` committed to the repo, refreshed nightly                                    |
-| Scraping    | Native `fetch` against public JSON APIs (Greenhouse boards-api, Lever postings, RemoteOK)    |
+| Data store  | `data/jobs.json` committed to the repo, refreshed nightly (plus a small `jobs-meta.json` sidecar) |
+| Scraping    | Native `fetch` against public JSON APIs (Greenhouse boards-api, Ashby posting-api, Lever postings, RemoteOK) |
 | Hosting     | Vercel (web + cron) + GitHub Actions (nightly scrape commits back to repo)                   |
 | Analytics   | Vercel Analytics                                                                             |
-| Package mgr | pnpm                                                                                         |
+| Package mgr | npm (`package-lock.json`)                                                                    |
 
 ## Local setup
 
 ```bash
-pnpm install
+npm install
 cp .env.local.example .env.local
 # fill in env vars per the table below
-pnpm dev
+npm run dev
+```
+
+Run the checks (all three are what CI runs):
+
+```bash
+npm run lint
+npm test
+npm run build
 ```
 
 To refresh the job set locally:
 
 ```bash
-pnpm scrape
+npm run scrape
 ```
+
+The scrape exits non-zero if any source drops below its health floor, if the
+corpus shrinks by more than half, or if it exceeds the size ceiling - board
+slugs die constantly and a silently thinning `jobs.json` used to look like a
+successful run.
 
 ### Database
 
 During development the schema is applied via Drizzle's `db:push` (no migration files):
 
 ```bash
-pnpm db:push
+npm run db:push
 ```
 
 For production, the workflow switches to generated migrations:
 
 ```bash
-pnpm db:generate                  # diffs schema → emits SQL in db/migrations/
-git commit db/migrations/...      # check the migration into the repo
-pnpm db:migrate                   # apply to the production DB
+npm run db:generate            # diffs schema → emits SQL in db/migrations/
+git commit db/migrations/...   # check the migration into the repo
+npm run db:migrate             # apply to the production DB
 ```
 
 ### Stripe webhooks during local development
@@ -135,7 +150,7 @@ pnpm db:migrate                   # apply to the production DB
 stripe login                                                # one-time
 stripe listen --forward-to localhost:3000/api/webhooks/stripe
 # copy the printed "whsec_..." into STRIPE_WEBHOOK_SECRET in .env.local
-pnpm dev                                                    # in another terminal
+npm run dev                                                    # in another terminal
 # /pricing → Start free trial → test card 4242 4242 4242 4242 → any future date, any CVC.
 ```
 
@@ -167,8 +182,21 @@ Returns a `{ ok, processed, sent, errors, skipped, details[] }` summary includin
 | `DIGEST_FROM_EMAIL` (optional)        | SaaS            | cron handler                           | Override the sender once a Resend domain is verified. Defaults to `Job Cannon <onboarding@resend.dev>`. |
 | `CRON_SECRET`                         | SaaS            | `/api/cron/daily-digest`               | Bearer auth for Vercel Cron.                  |
 | `NEXT_PUBLIC_APP_URL`                 | SaaS (prod)     | Stripe redirects, email links          | Required in production with a custom domain (Vercel's auto-detect resolves to the `.vercel.app` URL). E.g. `https://jobcannon.app`. |
+| `MATCH_DAILY_LIMIT_PER_IP` (optional) | MVP             | `/api/match`                           | Free previews allowed per visitor per day. Default `5`. |
+| `MATCH_DAILY_LIMIT_GLOBAL` (optional) | MVP             | `/api/match`                           | Free previews allowed across all visitors per day - a circuit breaker on Claude spend. Default `100`. |
+| `RATE_LIMIT_SALT` (optional)          | MVP             | `/api/match`                           | Salt for the one-way IP hash the limiter counts against. Falls back to `CRON_SECRET`; set explicitly if you rotate that. |
 
 The nightly GitHub Actions scrape needs **no secrets** - it only hits public JSON endpoints.
+
+### Free-preview spend guard
+
+`/api/match` takes no auth by design, and each call costs two Claude requests.
+Two fixed daily windows bound that: one per visitor, one global. Counters live
+in a `rate_limits` table keyed by a **salted hash** of the caller's IP - the
+address itself is never stored - and the window is encoded in the key, so there
+is no reset job to run. Exceeding either returns `429` with a `retry-after`
+header. If the counter write fails the request is allowed through: the limiter
+is a guard, not the product.
 
 ## Project layout
 
@@ -197,8 +225,10 @@ lib/scrapers/                     One file per source + html stripper
 lib/stripe/                       Stripe client + sub helpers
 lib/types.ts                      Shared Zod schemas + types
 proxy.ts                          Clerk middleware (Next 16 file convention)
-scripts/scrape.ts                 Orchestrator for `pnpm scrape`
+scripts/scrape.ts                 Orchestrator for `npm run scrape`
 data/jobs.json                    Committed job index, refreshed nightly
+data/jobs-meta.json               Corpus stats sidecar, so pages needing only the count skip the 44 MB read
+tests/                            node:test suites over the pure logic (npm test)
 vercel.json                       Vercel Cron config (13:00 UTC Mon-Fri)
 .github/workflows/scrape.yml      Nightly job-source scrape + commit
 ```

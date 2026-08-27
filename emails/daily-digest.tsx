@@ -245,7 +245,16 @@ export default function DailyDigestEmail({
   return (
     <Html lang="en">
       <Head>
+        {/*
+          The palette below is hardcoded light (HANDOFF.md's paper-white /
+          near-black), so opt out of client auto-inversion rather than let
+          Apple Mail or Outlook.com recolour it unpredictably. `color-scheme`
+          is the modern signal; `supported-color-schemes` is the older one
+          several clients still read. Gmail's dark mode honours neither and
+          applies its own transform — that one is not addressable from here.
+        */}
         <meta name="color-scheme" content="light only" />
+        <meta name="supported-color-schemes" content="light" />
       </Head>
       <Preview>{preview}</Preview>
       <Body style={styles.body}>

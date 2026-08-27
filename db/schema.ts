@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -75,6 +76,26 @@ export const resumeReviews = pgTable(
   table => [index('resume_reviews_user').on(table.userId, table.createdAt)],
 );
 
+/**
+ * Fixed-window counters for the unauthenticated /api/match endpoint.
+ *
+ * Not user data: the key is `match:ip:<salted sha256>:<ET date>` or
+ * `match:global:<ET date>`, so no IP address is ever written to the database.
+ * The window is baked into the key, which is why there's no reset logic —
+ * a new day is simply a new row. `expiresAt` exists only so the daily cron
+ * can sweep old rows.
+ *
+ * Deliberately its own tiny table with a text primary key: one upsert
+ * statement can increment both the per-IP and the global counter and return
+ * both values, which is the only way to do this atomically over Neon's HTTP
+ * driver (no multi-statement transactions).
+ */
+export const rateLimits = pgTable('rate_limits', {
+  key: text('key').primaryKey(),
+  count: integer('count').notNull().default(0),
+  expiresAt: timestamp('expires_at').notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Subscription = typeof subscriptions.$inferSelect;
@@ -85,6 +106,7 @@ export type DailyDigest = typeof dailyDigests.$inferSelect;
 export type NewDailyDigest = typeof dailyDigests.$inferInsert;
 export type ResumeReviewRow = typeof resumeReviews.$inferSelect;
 export type NewResumeReviewRow = typeof resumeReviews.$inferInsert;
+export type RateLimitRow = typeof rateLimits.$inferSelect;
 
 export const ACTIVE_SUB_STATUSES = ['trialing', 'active'] as const;
 

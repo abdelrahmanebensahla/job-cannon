@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-export type JobSource = 'greenhouse' | 'lever' | 'remoteok';
+export type JobSource = 'greenhouse' | 'lever' | 'remoteok' | 'ashby';
 
 export const JobSchema = z.object({
   id: z.string(),
-  source: z.enum(['greenhouse', 'lever', 'remoteok']),
+  source: z.enum(['greenhouse', 'lever', 'remoteok', 'ashby']),
   company: z.string(),
   title: z.string(),
   location: z.string().nullable(),

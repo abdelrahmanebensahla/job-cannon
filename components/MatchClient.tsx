@@ -27,6 +27,10 @@ const ERROR_COPY: Record<string, string> = {
   invalid_form_data: 'Could not read the upload. Try again.',
   extraction_failed: "Claude couldn't read enough structure from that resume. Try a cleaner PDF.",
   ranking_failed: 'Ranking failed mid-flight. Please retry.',
+  rate_limited:
+    "You've used all of today's free previews. Try again tomorrow, or subscribe to get matches every weekday morning.",
+  daily_capacity_reached:
+    "The free preview has hit today's limit. Try again tomorrow, or subscribe to skip the queue.",
 };
 
 function ProcessingPanel({ fileName }: { fileName: string }) {
@@ -37,7 +41,7 @@ function ProcessingPanel({ fileName }: { fileName: string }) {
         <p className="text-[0.8125rem] text-muted-foreground">{fileName}</p>
       </div>
       <p className="mt-3 max-w-prose text-[0.9375rem] text-muted-foreground">
-        Extracting your profile and ranking against ~5,000 fresh startup roles. Usually 15–30 seconds.
+        Extracting your profile and ranking against 10,000+ fresh startup roles. Usually 15–30 seconds.
       </p>
     </div>
   );
@@ -147,8 +151,8 @@ export function MatchClient() {
         </Link>
       </p>
       {state.kind === 'error' && (
-        <div className="flex items-center justify-between gap-3 border border-[--color-destructive]/40 px-4 py-3">
-          <span className="text-[0.8125rem] text-[--color-destructive]" role="alert">
+        <div className="flex items-center justify-between gap-3 border border-destructive/40 px-4 py-3">
+          <span className="text-[0.8125rem] text-destructive" role="alert">
             {state.message}
           </span>
           <button
