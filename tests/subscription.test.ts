@@ -8,6 +8,13 @@ const NOW = new Date('2026-08-27T12:00:00Z');
 const FUTURE = new Date('2026-09-27T12:00:00Z');
 const PAST = new Date('2026-07-27T12:00:00Z');
 
+// hasActiveSubscription reads the real clock (it takes no `now`), so the two
+// canceled-period cases need dates relative to it. They used the fixed FUTURE
+// above and started failing the day it passed, 2026-09-27.
+const DAY_MS = 86_400_000;
+const CLOCK_FUTURE = new Date(Date.now() + 30 * DAY_MS);
+const CLOCK_PAST = new Date(Date.now() - 30 * DAY_MS);
+
 function sub(overrides: Partial<Subscription> = {}): Subscription {
   return {
     id: 'sub_test',
@@ -39,14 +46,14 @@ describe('hasActiveSubscription', () => {
     // the window already paid for. Bouncing them out here would be taking
     // money for access we then denied.
     assert.equal(
-      hasActiveSubscription(sub({ status: 'canceled', currentPeriodEnd: FUTURE })),
+      hasActiveSubscription(sub({ status: 'canceled', currentPeriodEnd: CLOCK_FUTURE })),
       true,
     );
   });
 
   it('revokes access once a canceled period has elapsed', () => {
     assert.equal(
-      hasActiveSubscription(sub({ status: 'canceled', currentPeriodEnd: PAST })),
+      hasActiveSubscription(sub({ status: 'canceled', currentPeriodEnd: CLOCK_PAST })),
       false,
     );
   });
