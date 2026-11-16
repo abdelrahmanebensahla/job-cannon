@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# evals: run output and the extracted corpus cache are reproducible, not source
+/evals/runs/
+/evals/.cache/
+/evals/.venv/
+__pycache__/

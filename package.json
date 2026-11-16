@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "tsx --test tests/*.test.ts",
     "scrape": "tsx scripts/scrape.ts",
+    "eval:run": "tsx evals/runner/run.ts",
+    "eval:lock": "tsx evals/runner/lock-corpus.ts",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
