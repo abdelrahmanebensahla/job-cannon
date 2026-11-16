@@ -2,7 +2,7 @@
 
 Offline evaluation for the ranking pipeline. A TypeScript runner calls the production functions (`preFilter` and `rankJobs`, no copied prompts) over frozen profiles and a frozen corpus, and writes JSONL. Python scores it.
 
-Status: runner only. Golden set, scoring, judge and CI gate land in later PRs.
+Status: runner plus a smoke workflow. Golden set, scoring, judge and the CI gate land in later PRs.
 
 ## Baseline
 
@@ -18,6 +18,8 @@ npm run eval:run -- --profiles evals/runner/fixtures/smoke-profiles.jsonl --dry-
 ANTHROPIC_API_KEY=... npm run eval:run -- \
   --profiles evals/runner/fixtures/smoke-profiles.jsonl --budget-usd 0.50
 ```
+
+In CI, `.github/workflows/evals.yml` runs the same command with the `ANTHROPIC_API_KEY_EVALS` secret. It triggers on PRs that touch `lib/ai/**`, `lib/jobs.ts`, `lib/types.ts`, the digest route or the harness, and can be started by hand from the Actions tab. Today it runs the three smoke profiles under a $0.50 cap and gates nothing.
 
 Output goes to `evals/runs/<run_id>.jsonl` plus a `<run_id>.meta.json` with the commit, model, corpus lock and spend. Both are gitignored.
 

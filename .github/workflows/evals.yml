@@ -1,0 +1,108 @@
+name: Evals
+
+# Paid runs of the eval runner against the real Anthropic API.
+#
+# Status: smoke only. This is not a gate yet. It proves the runner works end
+# to end and records real token, cost and latency numbers. The baseline
+# comparison replaces the PR behaviour once a baseline has been measured.
+#
+# Cost control:
+#   - PR runs trigger only when an AI code path or the harness changes.
+#   - The nightly corpus refresh pushes straight to main and never runs this.
+#   - Every run passes --budget-usd, which the runner enforces as a hard cap
+#     before each request.
+#   - Fork PRs are skipped. They do not receive the secret.
+
+on:
+  pull_request:
+    paths:
+      - 'lib/ai/**'
+      - 'lib/jobs.ts'
+      - 'lib/types.ts'
+      - 'app/api/cron/daily-digest/route.ts'
+      - 'evals/runner/**'
+      - 'evals/golden/**'
+      - '.github/workflows/evals.yml'
+  workflow_dispatch:
+    inputs:
+      profiles:
+        description: Profiles JSONL, relative to the repo root
+        default: evals/runner/fixtures/smoke-profiles.jsonl
+      budget_usd:
+        description: Hard spend cap for this run, in USD
+        default: '0.50'
+      repeats:
+        description: Times to rank each profile
+        default: '1'
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # A separate key in its own workspace, so eval traffic never shares a
+      # rate limit or a budget with the production digest.
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_EVALS }}
+      # Inputs go through env, never straight into a shell line.
+      PROFILES: ${{ inputs.profiles || 'evals/runner/fixtures/smoke-profiles.jsonl' }}
+      BUDGET_USD: ${{ inputs.budget_usd || '0.50' }}
+      REPEATS: ${{ inputs.repeats || '1' }}
+    steps:
+      # Check out the PR's own head commit, not GitHub's temporary merge
+      # commit, so every recorded result names a commit that actually exists
+      # in the repo's history.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Check the eval key is configured
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Secret ANTHROPIC_API_KEY_EVALS is not set for this repository."
+            exit 1
+          fi
+
+      - name: Run
+        run: |
+          npm run eval:run -- \
+            --profiles "$PROFILES" \
+            --budget-usd "$BUDGET_USD" \
+            --repeats "$REPEATS" \
+            --out evals/runs/run.jsonl
+
+      - name: Summary
+        if: always()
+        run: |
+          test -f evals/runs/run.meta.json && cat evals/runs/run.meta.json
+          test -s evals/runs/run.jsonl && jq -r '
+            "\(.profile_id) r\(.repeat): returned=\(.ranked | length) top=\(.top_ids | length)"
+            + " attempts=\(.attempts | length) invalid_first=\(.attempts[0].invalid_ids | length)"
+            + " dup_first=\(.attempts[0].duplicate_ids | length) dropped=\(.dropped_invalid_ids | length)"
+            + " in=\(.input_tokens) out=\(.output_tokens) cost_usd=\(.cost_usd)"
+            + " latency_ms=\(.latency_ms) error=\(.error)"
+          ' evals/runs/run.jsonl || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-run-${{ github.run_id }}
+          path: evals/runs/
+          if-no-files-found: ignore
+          retention-days: 30
